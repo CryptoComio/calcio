@@ -188,6 +188,15 @@ body.no-scroll{overflow:hidden}
   </div>
 </div></div>
 
+<div class="modal" id="roleLabelM"><div class="panel">
+  <h3 style="margin:0 0 8px">Etichetta ruolo</h3>
+  <input id="roleLabelInput" class="input" placeholder="Nome ruolo">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+    <button class="btn" data-close="#roleLabelM">Annulla</button>
+    <button class="btn primary" id="roleLabelSave">Salva</button>
+  </div>
+</div></div>
+
 <div class="modal" id="playerM"><div class="panel">
   <h3 id="pTitle" style="margin:0 0 8px">Nuovo Giocatore</h3>
   <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -275,7 +284,7 @@ let posOverrides=Storage.get('posOverrides',{});
 let moveLocked=Storage.get('moveLocked',true);
 let snap=Storage.get('snap',true);
 let anticoll=Storage.get('anticoll',true);
-let __editing=null, __pendingPos=null;
+let __editing=null, __pendingPos=null, __roleEditing=null;
 
 /* Seed 11 giocatori se primo avvio */
 if(players.length===0){
@@ -378,6 +387,8 @@ function showRoleMenu(pos, player, anchor){
   const m=document.createElement('div'); m.className='menu-pop';
   const head=document.createElement('div'); head.className='menu-head';
   head.textContent=pos.role+(pos.side?(' · '+pos.side):''); m.appendChild(head);
+  const editLabel=document.createElement('div'); editLabel.className='menu-item'; editLabel.textContent='Modifica etichetta ruolo';
+  editLabel.onclick=()=>{ m.remove(); openRoleLabelEditor(pos.role); }; m.appendChild(editLabel);
   if(player){
     const rem=document.createElement('div'); rem.className='menu-item'; rem.textContent='Rimuovi da posizione';
     rem.onclick=()=>{ delete lineup[pos.id]; Storage.set('lineup',lineup); m.remove(); renderField(); };
@@ -406,6 +417,12 @@ function showRoleMenu(pos, player, anchor){
   let top=ar.bottom+8; if(top+mh>vh-8) top=ar.top-mh-8; top=Math.max(8,top);
   m.style.left=left+'px'; m.style.top=top+'px';
   setTimeout(()=>document.addEventListener('mousedown',function hide(e){ if(m&&!m.contains(e.target)){m.remove(); window.__menu=null; document.removeEventListener('mousedown',hide,true)} },true),0);
+}
+
+function openRoleLabelEditor(code){
+  __roleEditing=code;
+  byId('roleLabelInput').value=roleLabel(code);
+  openModal('#roleLabelM');
 }
 
 /* ===== DRAG (Snap/Anti-collisione) ===== */
@@ -551,6 +568,7 @@ byId('pSave').onclick=handlePlayerSave; byId('pRemove').onclick=handlePlayerDele
 byId('editInfo').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
 byId('editRoles').onclick=()=>{const box=byId('rolesEditBox');box.innerHTML='';roleCodes.forEach(code=>{const div=document.createElement('div');div.innerHTML=`<label style="font-size:12px">${code}</label><input class="input" data-code="${code}" value="${roleLabel(code)}">`;box.appendChild(div);});openModal('#rolesM')};
 byId('rolesSave').onclick=()=>{byId('rolesEditBox').querySelectorAll('input[data-code]').forEach(inp=>{setRoleLabel(inp.dataset.code,inp.value.trim()||rolesConfig[inp.dataset.code].defaultLabel);});renderList();renderField();closeModal('#rolesM');};
+byId('roleLabelSave').onclick=()=>{if(!__roleEditing) return; const val=byId('roleLabelInput').value.trim()||rolesConfig[__roleEditing].defaultLabel; setRoleLabel(__roleEditing,val); renderList(); renderField(); closeModal('#roleLabelM');};
 byId('teamName').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
 byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); renderHeader(); closeModal('#infoM') });
 byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); renderHeader()});
