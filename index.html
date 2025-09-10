@@ -8,6 +8,11 @@
 :root{
   --bg:#0a0f1a;--fg:#e6edf3;--card:#121826;--mut:#0f1624;--br:#273449;--ink:#1d2a3f;--pri:#4f8cff;--line:#9fb3c8;
   --tok-min:46px;--tok-max:92px;
+  /* ruolo → colore */
+  --role-GK:#24a148;
+  --role-DF:#0f62fe;
+  --role-MF:#8a3ffc;
+  --role-FW:#fa4d56;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:linear-gradient(180deg,#0a0f1a,#090d16);color:var(--fg)}
@@ -37,14 +42,15 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:11px;padding:3px 8px;border-radius:999px;white-space:nowrap}
 .token{
   --tok:56px;
+  --role-color:var(--role-DF);
   position:relative;width:var(--tok);height:var(--tok);border-radius:999px;
-  display:grid;place-content:center;font-weight:900;color:#e5e7eb;touch-action:none; -webkit-tap-highlight-color:transparent;
-  /* bordo a gradiente simulato */
+  display:grid;place-content:center;font-weight:900;touch-action:none; -webkit-tap-highlight-color:transparent;
   background:
-    linear-gradient(#1113, #1113) padding-box,
-    conic-gradient(#fff0 0 25%, #fff3 0 50%, #fff0 0 75%, #fff3 0 100%) border-box,
-    linear-gradient(180deg,#475569,#334155) border-box;
+    linear-gradient(#1113,#1113) padding-box,
+    conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box,
+    var(--role-color) border-box;
   border:3px solid transparent;
+  color:var(--token-fg,#e5e7eb);
   box-shadow:
     0 14px 38px rgba(0,0,0,.55),
     0 0 0 1px rgba(0,0,0,.25) inset;
@@ -63,37 +69,10 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
 .token:hover{transform:scale(1.06); box-shadow:0 18px 44px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.28) inset}
 .token:hover::after{opacity:.5}
 
-/* palette reparti */
-.token.gk{
-  background:
-    linear-gradient(#1113,#1113) padding-box,
-    conic-gradient(#fff0 0 25%, #fff3 0 50%, #fff0 0 75%, #fff3 0 100%) border-box,
-    linear-gradient(180deg,#fbbf24,#b45309) border-box;
-  color:#0b1020; border:3px solid transparent;
-}
-.token.def{
-  background:
-    linear-gradient(#1113,#1113) padding-box,
-    conic-gradient(#fff0 0 25%, #93c5fd55 0 50%, #fff0 0 75%, #93c5fd55 0 100%) border-box,
-    linear-gradient(180deg,#60a5fa,#2563eb) border-box;
-}
-.token.mid{
-  background:
-    linear-gradient(#1113,#1113) padding-box,
-    conic-gradient(#fff0 0 25%, #86efac55 0 50%, #fff0 0 75%, #86efac55 0 100%) border-box,
-    linear-gradient(180deg,#86efac,#22c55e) border-box;
-}
-.token.att{
-  background:
-    linear-gradient(#1113,#1113) padding-box,
-    conic-gradient(#fff0 0 25%, #f0abfc55 0 50%, #fff0 0 75%, #f0abfc55 0 100%) border-box,
-    linear-gradient(180deg,#f0abfc,#d946ef) border-box;
-}
-
 /* foto + nome */
 .token img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px;z-index:0}
-.token.has-photo .nm{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);background:rgba(11,18,32,.85);padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}
-.nm{position:relative;z-index:2;font-size:calc(var(--tok)*.18);max-width:calc(var(--tok)*.95);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.85)}
+.token.has-photo .token__name{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);background:rgba(11,18,32,.85);padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}
+.token__name{position:relative;z-index:2;max-width:calc(var(--tok)*.95);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;line-height:1;font-size:clamp(12px,2.2vw,18px);-webkit-text-stroke:0.6px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.45)}
 
 /* numero maglia */
 .num{
@@ -140,6 +119,7 @@ body.no-scroll{overflow:hidden}
     <div class="right">
       <label class="btn">Logo<input id="logoInput" type="file" accept="image/*" style="display:none"></label>
       <button class="btn" id="editInfo">Modifica</button>
+      <button class="btn" id="editRoles">Ruoli</button>
       <button class="btn" id="share">Condividi</button>
       <button class="btn" id="lock">Sblocca movimento</button>
       <label class="switch"><input id="snap" type="checkbox" checked>Snap</label>
@@ -199,6 +179,15 @@ body.no-scroll{overflow:hidden}
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn" data-close="#infoM">Chiudi</button></div>
 </div></div>
 
+<div class="modal" id="rolesM"><div class="panel">
+  <h3 style="margin:0 0 8px">Etichette ruoli</h3>
+  <div id="rolesEditBox" style="display:grid;grid-template-columns:1fr;gap:8px"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+    <button class="btn" data-close="#rolesM">Annulla</button>
+    <button class="btn primary" id="rolesSave">Salva</button>
+  </div>
+</div></div>
+
 <div class="modal" id="playerM"><div class="panel">
   <h3 id="pTitle" style="margin:0 0 8px">Nuovo Giocatore</h3>
   <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -237,30 +226,35 @@ body.no-scroll{overflow:hidden}
 
 <script>
 /* ===== ROLES & FORMATIONS ===== */
-const ROLES=[
-  {code:'POR',label:'Portiere'},{code:'DC',label:'Difensore Centrale'},
-  {code:'TS',label:'Terzino Sinistro'},{code:'TD',label:'Terzino Destro'},
-  {code:'CDS',label:'Centrocampista Difensivo'},{code:'COC',label:'Centrocampista Offensivo'},
-  {code:'AS',label:'Ala Sinistra'},{code:'ATT',label:'Attaccante'},{code:'AD',label:'Ala Destra'}
-];
-const ROLES_LABEL=Object.fromEntries(ROLES.map(r=>[r.code,r.label]));
+const rolesConfig={
+  POR:{group:'GK',defaultLabel:'Portiere',color:'var(--role-GK)',hex:'#24a148',icon:'🧤'},
+  DC:{group:'DF',defaultLabel:'Difensore Centrale',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
+  TS:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
+  TD:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
+  CDS:{group:'MF',defaultLabel:'Centrocampista Difensivo',color:'var(--role-MF)',hex:'#8a3ffc',icon:'⚙️'},
+  COC:{group:'MF',defaultLabel:'Centrocampista Offensivo',color:'var(--role-MF)',hex:'#8a3ffc',icon:'⚙️'},
+  AS:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'},
+  ATT:{group:'FW',defaultLabel:'Attaccante',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'},
+  AD:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'}
+};
+const roleCodes=Object.keys(rolesConfig);
 const FORMATIONS={
-  '4-2-1-3':[ {id:'ATT',role:'ATT',x:50,y:14},{id:'AS',role:'AS',x:25,y:22,side:'Sx'},{id:'AD',role:'AD',x:75,y:22,side:'Dx'},
-              {id:'COC',role:'COC',x:50,y:36},{id:'CDS_L',role:'CDS',x:40,y:52,side:'Sx'},{id:'CDS_R',role:'CDS',x:60,y:52,side:'Dx'},
-              {id:'TS',role:'TS',x:18,y:78,side:'Sx'},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78,side:'Dx'},
+  '4-2-1-3':[ {id:'ATT',role:'ATT',x:50,y:14},{id:'AS',role:'AS',x:25,y:22},{id:'AD',role:'AD',x:75,y:22},
+              {id:'COC',role:'COC',x:50,y:36},{id:'CDS_L',role:'CDS',x:40,y:52},{id:'CDS_R',role:'CDS',x:60,y:52},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
               {id:'POR',role:'POR',x:50,y:92} ],
-  '4-3-3':[   {id:'ATT',role:'ATT',x:50,y:16},{id:'AS',role:'AS',x:24,y:24,side:'Sx'},{id:'AD',role:'AD',x:76,y:24,side:'Dx'},
-              {id:'COC',role:'COC',x:38,y:46},{id:'CDS_L',role:'CDS',x:50,y:56,side:'Sx'},{id:'CDS_R',role:'CDS',x:62,y:46,side:'Dx'},
-              {id:'TS',role:'TS',x:18,y:78,side:'Sx'},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78,side:'Dx'},
+  '4-3-3':[   {id:'ATT',role:'ATT',x:50,y:16},{id:'AS',role:'AS',x:24,y:24},{id:'AD',role:'AD',x:76,y:24},
+              {id:'COC',role:'COC',x:38,y:46},{id:'CDS_L',role:'CDS',x:50,y:56},{id:'CDS_R',role:'CDS',x:62,y:46},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
               {id:'POR',role:'POR',x:50,y:92} ],
   '4-4-2':[   {id:'ATT1',role:'ATT',x:43,y:18},{id:'ATT2',role:'ATT',x:57,y:18},
-              {id:'AS',role:'AS',x:22,y:46,side:'Sx'},{id:'CDS_L',role:'CDS',x:45,y:52,side:'Sx'},
-              {id:'CDS_R',role:'CDS',x:55,y:52,side:'Dx'},{id:'AD',role:'AD',x:78,y:46,side:'Dx'},
-              {id:'TS',role:'TS',x:18,y:78,side:'Sx'},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78,side:'Dx'},
+              {id:'AS',role:'AS',x:22,y:46},{id:'CDS_L',role:'CDS',x:45,y:52},
+              {id:'CDS_R',role:'CDS',x:55,y:52},{id:'AD',role:'AD',x:78,y:46},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
               {id:'POR',role:'POR',x:50,y:92} ]
 };
-/* mappa reparto => classe */
-const RG=(c)=>c==='POR'?'gk': (['TS','TD','DC'].includes(c)?'def': (['CDS','COC'].includes(c)?'mid':'att'));
+function roleLabel(code){return Storage.get('roleName_'+code, rolesConfig[code].defaultLabel)}
+function setRoleLabel(code,label){Storage.set('roleName_'+code,label)}
 
 /* ===== STORAGE WRAPPER ===== */
 const Mem={};
@@ -314,6 +308,7 @@ function fileToDataUrlResized(file,maxSide=640,quality=0.85){
 function updateTok(){const f=byId('field'); if(!f) return; const r=f.getBoundingClientRect(); const s=Math.max(56,Math.min(100,Math.round(Math.min(r.width,r.height)*.09))); f.style.setProperty('--tok',s+'px')}
 function oKey(f,p){return `${f}:${p}`}
 function getXY(f,pos){const ov=posOverrides[oKey(f,pos.id)]; return {x:ov?ov.x:pos.x, y:ov?ov.y:pos.y}}
+function isDark(hex){const c=hex.replace('#','');const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);return(0.299*r+0.587*g+0.114*b)/255<0.5}
 
 function syncFieldTouch(){ const fld=byId('field'); if(!fld) return; fld.classList.toggle('unlocked', !moveLocked); }
 /* ===== RENDER ===== */
@@ -332,13 +327,15 @@ function renderField(){
     const xy=getXY(formationKey,pos); slot.style.left=xy.x+'%'; slot.style.top=xy.y+'%';
     const pl=players.find(p=>p.id===lineup[pos.id]);
     /* badge ruolo */
+    const cfg=rolesConfig[pos.role];
     const rb=document.createElement('div'); rb.className='role-badge';
-    rb.textContent=pos.role+(pos.side?` · ${pos.side}`:''); slot.appendChild(rb);
+    const rl=roleLabel(pos.role); rb.textContent=rl; rb.style.background=cfg.color; rb.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020'; slot.appendChild(rb);
     /* token */
-    const cls=RG(pos.role);
-    const t=document.createElement('button'); t.type='button'; t.className='token '+cls;
+    const t=document.createElement('button'); t.type='button'; t.className='token';
+    t.style.setProperty('--role-color',cfg.color);
+    t.style.setProperty('--token-fg',isDark(cfg.hex)?'#e5e7eb':'#0b1020');
     if(pl && pl.photo){ const im=new Image(); im.src=pl.photo; t.appendChild(im); t.classList.add('has-photo'); }
-    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=pl?pl.name:pos.role; t.appendChild(nm);
+    const nm=document.createElement('div'); nm.className='token__name'; nm.textContent=pl?pl.name:rl; nm.title=nm.textContent; t.appendChild(nm);
     if(pl && pl.number && pl.number!=='none'){ const nb=document.createElement('div'); nb.className='num'; nb.textContent=pl.number; t.appendChild(nb); }
     t.__dragged=false;
 const openIfNotDragged=(ev)=>{ if(t.__dragged){ ev.preventDefault(); ev.stopPropagation(); t.__dragged=false; return; } showRoleMenu(pos,pl,t); };
@@ -350,11 +347,14 @@ if(!moveLocked) enableDrag(t,slot,pos.id);
 function firstFree(role){const ids=(FORMATIONS[formationKey]||[]).filter(p=>p.role===role).map(p=>p.id); for(const id of ids){ if(!lineup[id]) return id } return ids[0] }
 function renderList(){
   const root=byId('list'); root.innerHTML=''; const q=(byId('search').value||'').toLowerCase();
-  ROLES.forEach(r=>{
+  roleCodes.forEach(code=>{
+    const label=roleLabel(code); const cfg=rolesConfig[code];
     const g=document.createElement('div'); g.className='group';
-    g.innerHTML=`<div style="display:flex;gap:8px;align-items:center"><span class="badge">${r.code}</span><b>${r.label}</b></div>`;
+    const header=document.createElement('div'); header.style.display='flex'; header.style.gap='8px'; header.style.alignItems='center';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent=code; badge.style.background=cfg.color; badge.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020';
+    header.appendChild(badge); const b=document.createElement('b'); b.textContent=label; header.appendChild(b); g.appendChild(header);
     const box=document.createElement('div');
-    players.filter(p=>p.role===r.code && p.name.toLowerCase().includes(q)).forEach((p,i)=>{
+    players.filter(p=>p.role===code && p.name.toLowerCase().includes(q)).forEach((p,i)=>{
       const row=document.createElement('div'); row.className='row';
       const L=document.createElement('div'); L.style.display='flex';L.style.gap='8px';L.style.alignItems='center';
       L.innerHTML=`<div class="av">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
@@ -465,7 +465,7 @@ function enableDrag(token,slot,posId){
 
 /* ===== PLAYER MODAL ===== */
 function updatePlayerOptions(){
-  const roleSel=byId('pRole'); roleSel.innerHTML=ROLES.map(r=>`<option value="${r.code}">${r.label}</option>`).join('');
+  const roleSel=byId('pRole'); roleSel.innerHTML=roleCodes.map(code=>`<option value="${code}">${roleLabel(code)}</option>`).join('');
   const numSel=byId('pNum'); numSel.innerHTML='<option value="none">Nessun numero</option>'+Array.from({length:99},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
 }
 function openPlayer(p,posId){
@@ -496,15 +496,14 @@ function handlePlayerDelete(){
 }
 
 /* ===== SHARE / EXPORT HTML ===== */
-function buildShareState(){ return {formationKey,players,lineup,teamName,coachName,logo,posOverrides} }
+function buildShareState(){ return {formationKey,players,lineup,teamName,coachName,logo,posOverrides,roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)]))} }
 function viewerHtmlFromState(st){
-  const form=FORMATIONS[st.formationKey]||[]; const rolesLabel=ROLES_LABEL;
+  const form=FORMATIONS[st.formationKey]||[]; const rolesLabel=st.roleNames||{};
   function xy(p){const ov=(st.posOverrides||{})[`${st.formationKey}:${p.id}`]; return {x:ov?ov.x:p.x, y:ov?ov.y:p.y} }
-  const cls=(c)=>c==='POR'?'gk': (['TS','TD','DC'].includes(c)?'def': (['CDS','COC'].includes(c)?'mid':'att'));
-  return `<!doctype html><meta charset='utf-8'><title>${st.teamName||'Formazione'}</title><body style="margin:0;font-family:system-ui;background:#0a0f1a;color:#e6edf3"><div style="max-width:1200px;margin:0 auto;padding:12px">
+  return `<!doctype html><html lang='it'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>${st.teamName||'Formazione'}</title><style>body{margin:0;font-family:system-ui;background:#0a0f1a;color:#e6edf3;font-size:16px} .container{max-width:900px;margin:0 auto;padding:12px} .layout{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:900px){.layout{grid-template-columns:minmax(0,2fr) 380px}}</style><body><div class="container">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${st.logo?`<img src='${st.logo}' style='width:100%;height:100%;object-fit:cover'>`:''}</div>
   <div><div style="font-weight:800">${st.teamName||''}</div><div style="opacity:.8;font-size:12px">Allenatore: ${st.coachName||''}</div></div></div>
-  <div style="display:grid;grid-template-columns:minmax(0,2fr) 380px;gap:12px">
+  <div class="layout">
     <div style="background:#121826;border:1px solid #273449;border-radius:14px;padding:10px">
       <div style="position:relative;width:100%;aspect-ratio:9/16;border:1px solid #273449;border-radius:18px;background:linear-gradient(180deg,#166534,#064e3b)">
         <svg viewBox='0 0 100 160' preserveAspectRatio='none' style='position:absolute;inset:0;width:100%;height:100%'>
@@ -516,22 +515,18 @@ function viewerHtmlFromState(st){
           </g>
         </svg>
         ${form.map(pos=>{
-          const id=st.lineup[pos.id]; const pl=id?st.players.find(q=>q.id===id):null; const nm=pl?pl.name:pos.role; const c=cls(pos.role); const pxy=xy(pos);
+          const id=st.lineup[pos.id]; const pl=id?st.players.find(q=>q.id===id):null; const nm=pl?pl.name:rolesLabel[pos.role]; const cfg=rolesConfig[pos.role]; const pxy=xy(pos);
           const photo=pl&&pl.photo?`<img src='${pl.photo}' style='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px'>`:'';
           const num=(pl&&pl.number&&pl.number!=='none')?`<div style="position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;border-radius:999px;background:#0b1220;color:#e5e7eb;font-weight:900;font-size:11px;border:2px solid #334155;display:grid;place-content:center;z-index:3">${pl.number}</div>`:'';
-          const bg= c==='gk' ? 'linear-gradient(180deg,#fbbf24,#b45309)'
-                : c==='def' ? 'linear-gradient(180deg,#60a5fa,#2563eb)'
-                : c==='mid' ? 'linear-gradient(180deg,#86efac,#22c55e)'
-                : 'linear-gradient(180deg,#f0abfc,#d946ef)';
           const nameStyle= pl&&pl.photo ? 'position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:rgba(11,18,32,.85);padding:2px 6px;border-radius:999px;font-size:10px;max-width:95%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid rgba(255,255,255,.12)'
                                         : 'font-size:10px';
           return `<div style='position:absolute;left:${pxy.x}%;top:${pxy.y}%;transform:translate(-50%,-50%);z-index:1'>
-            <div style='position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:10px;padding:2px 6px;border-radius:999px'>${pos.role}${pos.side?` · ${pos.side}`:''}</div>
-            <div style='position:relative;width:56px;height:56px;border-radius:999px;border:3px solid transparent;display:grid;place-content:center;color:#e5e7eb;font-weight:900;
-                        background:linear-gradient(#1113,#1113) padding-box, conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box, ${bg} border-box;
+            <div style='position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:10px;padding:2px 6px;border-radius:999px'>${rolesLabel[pos.role]}</div>
+            <div style='position:relative;width:56px;height:56px;border-radius:999px;border:3px solid transparent;display:grid;place-content:center;color:${isDark(cfg.hex)?'#e5e7eb':'#0b1020'};
+                        background:linear-gradient(#1113,#1113) padding-box, conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box, ${cfg.color} border-box;
                         box-shadow:0 14px 38px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.25) inset'>
               ${photo}
-              <div style='${nameStyle}'>${nm}</div>
+              <div style='${nameStyle}' title='${nm}'>${nm}</div>
               ${num}
             </div>
           </div>`;
@@ -540,12 +535,13 @@ function viewerHtmlFromState(st){
     </div>
     <div style="background:#121826;border:1px solid #273449;border-radius:14px;padding:10px">
       <h3 style='margin:0 0 8px'>Lista giocatori</h3>
-      ${Object.keys(rolesLabel).map(code=>`<div style='border:1px solid #273449;border-radius:10px;padding:8px;margin-bottom:8px'><b>${code} – ${rolesLabel[code]}</b><div style='display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'>${(st.players.filter(p=>p.role===code).map(p=>`<span style='padding:4px 6px;border:1px solid #273449;border-radius:8px'>${p.name}${p.number&&p.number!=='none'?` (#${p.number})`:''}</span>`).join('')||'<i style="opacity:.7">Nessun giocatore</i>')}</div></div>`).join('')}
+      ${roleCodes.map(code=>{const cfg=rolesConfig[code];return `<div style='border:1px solid #273449;border-radius:10px;padding:8px;margin-bottom:8px'><div style="display:flex;align-items:center;gap:6px"><span class='badge' style='background:${cfg.color};color:${isDark(cfg.hex)?'#e5e7eb':'#0b1020'}'>${code}</span><b>${rolesLabel[code]}</b></div><div style='display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'>${(st.players.filter(p=>p.role===code).map(p=>`<span style='padding:4px 6px;border:1px solid #273449;border-radius:8px'>${p.name}${p.number&&p.number!=='none'?` (#${p.number})`:''}</span>`).join('')||'<i style="opacity:.7">Nessun giocatore</i>')}</div></div>`}).join('')}
     </div>
   </div>
-</div></body>`;
+</div></div></body></html>`;
 }
 function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function exportToHTML(){ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) }
 
 /* ===== EVENTS ===== */
 byId('formation').onchange=e=>{formationKey=e.target.value; Storage.set('formationKey',formationKey); renderField()};
@@ -553,12 +549,14 @@ byId('search').oninput=renderList;
 byId('add').onclick=()=>openPlayer();
 byId('pSave').onclick=handlePlayerSave; byId('pRemove').onclick=handlePlayerDelete; byId('pDelPhoto').onclick=()=>{ byId('pPhoto').value=''; byId('pPrev').innerHTML=''; if(__editing) __editing.photo=''; };
 byId('editInfo').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
+byId('editRoles').onclick=()=>{const box=byId('rolesEditBox');box.innerHTML='';roleCodes.forEach(code=>{const div=document.createElement('div');div.innerHTML=`<label style="font-size:12px">${code}</label><input class="input" data-code="${code}" value="${roleLabel(code)}">`;box.appendChild(div);});openModal('#rolesM')};
+byId('rolesSave').onclick=()=>{byId('rolesEditBox').querySelectorAll('input[data-code]').forEach(inp=>{setRoleLabel(inp.dataset.code,inp.value.trim()||rolesConfig[inp.dataset.code].defaultLabel);});renderList();renderField();closeModal('#rolesM');};
 byId('teamName').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
 byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); renderHeader(); closeModal('#infoM') });
 byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); renderHeader()});
 byId('share').onclick=()=>openModal('#shareM');
-byId('dlHtml').onclick=()=>{ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) };
-byId('downloadHtml').onclick=()=>{ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) };
+byId('dlHtml').onclick=exportToHTML;
+byId('downloadHtml').onclick=exportToHTML;
 
 byId('lock').onclick=()=>{ moveLocked=!moveLocked; Storage.set('moveLocked',moveLocked); renderHeader(); renderField() };
 byId('snap').onchange=e=>{ snap=!!e.target.checked; Storage.set('snap',snap) };
