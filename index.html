@@ -38,8 +38,9 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
 
 /* SLOT + TOKEN */
 .slot{position:absolute;transform:translate(-50%,-50%);z-index:1}
-.role-badge{position:absolute;top:calc(var(--tok,56px)*-0.42);left:50%;transform:translateX(-50%);
+.role-badge{position:absolute;top:calc(var(--tok,56px)*-0.48);left:50%;transform:translateX(-50%);
   background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:11px;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.token-wrap{position:relative;display:grid;place-items:center;width:var(--tok);height:var(--tok)}
 .token{
   --tok:56px;
   --role-color:var(--role-DF);
@@ -69,10 +70,13 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
 .token:hover{transform:scale(1.06); box-shadow:0 18px 44px rgba(0,0,0,.65), 0 0 0 1px rgba(0,0,0,.28) inset}
 .token:hover::after{opacity:.5}
 
-/* foto + nome */
+/* foto */
 .token img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px;z-index:0}
-.token.has-photo .token__name{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);background:rgba(11,18,32,.85);padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}
-.token__name{position:relative;z-index:2;max-width:calc(var(--tok)*.95);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;line-height:1;font-size:clamp(12px,2.2vw,18px);-webkit-text-stroke:0.6px rgba(0,0,0,.5);text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.nameplate-wrap{pointer-events:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);padding-top:4px}
+.nameplate{width:max-content;max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;
+  line-height:1.05;font-weight:800;font-size:13px;text-align:center;color:#f8fafc;padding:4px 12px;border-radius:999px;
+  background:rgba(10,14,22,.75);border:1px solid rgba(255,255,255,.14);box-shadow:0 2px 8px rgba(0,0,0,.45);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 
 /* numero maglia */
 .num{
@@ -331,26 +335,30 @@ function renderHeader(){
 }
 function renderField(){
   const f=byId('field'); f.querySelectorAll('.slot').forEach(n=>n.remove()); updateTok();
+  const tok=parseFloat(getComputedStyle(f).getPropertyValue('--tok'))||56;
   (FORMATIONS[formationKey]||[]).forEach(pos=>{
     const slot=document.createElement('div'); slot.className='slot';
     const xy=getXY(formationKey,pos); slot.style.left=xy.x+'%'; slot.style.top=xy.y+'%';
     const pl=players.find(p=>p.id===lineup[pos.id]);
-    /* badge ruolo */
     const cfg=rolesConfig[pos.role];
-    const rb=document.createElement('div'); rb.className='role-badge';
-    const rl=roleLabel(pos.role); rb.textContent=rl; rb.style.background=cfg.color; rb.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020'; slot.appendChild(rb);
-    /* token */
+    const rl=roleLabel(pos.role);
+    const wrap=document.createElement('div'); wrap.className='token-wrap';
+    const rb=document.createElement('div'); rb.className='role-badge'; rb.textContent=rl; rb.style.background=cfg.color; rb.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020'; wrap.appendChild(rb);
     const t=document.createElement('button'); t.type='button'; t.className='token';
     t.style.setProperty('--role-color',cfg.color);
     t.style.setProperty('--token-fg',isDark(cfg.hex)?'#e5e7eb':'#0b1020');
     if(pl && pl.photo){ const im=new Image(); im.src=pl.photo; t.appendChild(im); t.classList.add('has-photo'); }
-    const nm=document.createElement('div'); nm.className='token__name'; nm.textContent=pl?pl.name:rl; nm.title=nm.textContent; t.appendChild(nm);
     if(pl && pl.number && pl.number!=='none'){ const nb=document.createElement('div'); nb.className='num'; nb.textContent=pl.number; t.appendChild(nb); }
     t.__dragged=false;
-const openIfNotDragged=(ev)=>{ if(t.__dragged){ ev.preventDefault(); ev.stopPropagation(); t.__dragged=false; return; } showRoleMenu(pos,pl,t); };
-t.addEventListener('pointerup', openIfNotDragged, {passive:false});
-if(!moveLocked) enableDrag(t,slot,pos.id);
-    slot.appendChild(t); f.appendChild(slot);
+    const openIfNotDragged=(ev)=>{ if(t.__dragged){ ev.preventDefault(); ev.stopPropagation(); t.__dragged=false; return; } showRoleMenu(pos,pl,t); };
+    t.addEventListener('pointerup', openIfNotDragged, {passive:false});
+    if(!moveLocked) enableDrag(t,slot,pos.id);
+    wrap.appendChild(t);
+    const plateWrap=document.createElement('div'); plateWrap.className='nameplate-wrap';
+    const base=Math.max(tok*1.6,120); const maxW=Math.min(window.innerWidth*0.6,360); plateWrap.style.width=Math.min(base,maxW)+'px';
+    const plate=document.createElement('div'); plate.className='nameplate'; plate.textContent=pl?pl.name:rl; plate.title=plate.textContent; plateWrap.appendChild(plate);
+    wrap.appendChild(plateWrap);
+    slot.appendChild(wrap); f.appendChild(slot);
   });
 }
 function firstFree(role){const ids=(FORMATIONS[formationKey]||[]).filter(p=>p.role===role).map(p=>p.id); for(const id of ids){ if(!lineup[id]) return id } return ids[0] }
@@ -535,16 +543,18 @@ function viewerHtmlFromState(st){
           const id=st.lineup[pos.id]; const pl=id?st.players.find(q=>q.id===id):null; const nm=pl?pl.name:rolesLabel[pos.role]; const cfg=rolesConfig[pos.role]; const pxy=xy(pos);
           const photo=pl&&pl.photo?`<img src='${pl.photo}' style='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px'>`:'';
           const num=(pl&&pl.number&&pl.number!=='none')?`<div style="position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;border-radius:999px;background:#0b1220;color:#e5e7eb;font-weight:900;font-size:11px;border:2px solid #334155;display:grid;place-content:center;z-index:3">${pl.number}</div>`:'';
-          const nameStyle= pl&&pl.photo ? 'position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:rgba(11,18,32,.85);padding:2px 6px;border-radius:999px;font-size:10px;max-width:95%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid rgba(255,255,255,.12)'
-                                        : 'font-size:10px';
           return `<div style='position:absolute;left:${pxy.x}%;top:${pxy.y}%;transform:translate(-50%,-50%);z-index:1'>
-            <div style='position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:10px;padding:2px 6px;border-radius:999px'>${rolesLabel[pos.role]}</div>
-            <div style='position:relative;width:56px;height:56px;border-radius:999px;border:3px solid transparent;display:grid;place-content:center;color:${isDark(cfg.hex)?'#e5e7eb':'#0b1020'};
-                        background:linear-gradient(#1113,#1113) padding-box, conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box, ${cfg.color} border-box;
-                        box-shadow:0 14px 38px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.25) inset'>
-              ${photo}
-              <div style='${nameStyle}' title='${nm}'>${nm}</div>
-              ${num}
+            <div style='position:relative;display:grid;place-items:center;width:56px;height:56px'>
+              <div style='position:absolute;top:-27px;left:50%;transform:translateX(-50%);background:#0b1220;border:1px solid #334155;color:#e2e8f0;font-weight:800;font-size:10px;padding:2px 6px;border-radius:999px'>${rolesLabel[pos.role]}</div>
+              <div style='position:relative;width:56px;height:56px;border-radius:999px;border:3px solid transparent;display:grid;place-content:center;color:${isDark(cfg.hex)?'#e5e7eb':'#0b1020'};
+                          background:linear-gradient(#1113,#1113) padding-box, conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box, ${cfg.color} border-box;
+                          box-shadow:0 14px 38px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.25) inset'>
+                ${photo}
+                ${num}
+              </div>
+              <div style='pointer-events:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);padding-top:4px;width:clamp(120px,60vw,360px)'>
+                <div style='width:max-content;max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;font-weight:800;font-size:10px;text-align:center;color:#f8fafc;padding:2px 8px;border-radius:999px;background:rgba(10,14,22,.75);border:1px solid rgba(255,255,255,.14);box-shadow:0 2px 8px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)' title='${nm}'>${nm}</div>
+              </div>
             </div>
           </div>`;
         }).join('')}
