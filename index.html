@@ -9,10 +9,10 @@
   --bg:#0a0f1a;--fg:#e6edf3;--card:#121826;--mut:#0f1624;--br:#273449;--ink:#1d2a3f;--pri:#4f8cff;--line:#9fb3c8;
   --tok-min:46px;--tok-max:92px;
   /* ruolo → colore */
-  --role-GK:#24a148;
-  --role-DF:#0f62fe;
-  --role-MF:#8a3ffc;
-  --role-FW:#fa4d56;
+  --role-GK:#fbbf24;
+  --role-DF:#60a5fa;
+  --role-MF:#86efac;
+  --role-FW:#f0abfc;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:linear-gradient(180deg,#0a0f1a,#090d16);color:var(--fg)}
@@ -50,11 +50,11 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   font-size:11px;
   font-weight:800;
   white-space:nowrap;
-  background:rgba(9,14,22,.85);
-  border:1px solid rgba(255,255,255,.18);
-  color:#eef2ff;
   border-radius:999px;
   backdrop-filter:blur(4px);
+  border:1px solid var(--rb-b,rgba(255,255,255,.18));
+  background:var(--rb-bg,rgba(9,14,22,.85));
+  color:var(--rb-fg,#eef2ff);
   pointer-events:none;
 }
 .role-badge svg{display:block}
@@ -70,14 +70,57 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   font-weight:900;
   touch-action:none;
   -webkit-tap-highlight-color:transparent;
-  border:2px solid rgba(255,255,255,.1);
+  border:3px solid transparent;
   transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
   outline:none;
+  box-shadow:0 14px 38px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.25) inset;
+  background:linear-gradient(#1113,#1113) padding-box,
+             conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box,
+             var(--tok-grad,linear-gradient(180deg,#475569,#334155)) border-box;
+}
+.token::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border-radius:999px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.06), inset 0 12px 22px rgba(0,0,0,.35);
+  pointer-events:none;
+}
+.token::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  opacity:0;
+  background:linear-gradient(225deg,rgba(255,255,255,.18),rgba(255,255,255,0) 40%);
+  transition:opacity .12s ease;
+  pointer-events:none;
 }
 .token:hover{transform:scale(1.06);}
+.token:hover::after{opacity:.5;}
 
 /* foto */
 .token img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px;z-index:0}
+.nm{
+  position:absolute;
+  left:50%;
+  bottom:7%;
+  transform:translateX(-50%);
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(11,18,32,.85);
+  color:#f8fafc;
+  font-weight:800;
+  font-size:calc(var(--tok)*.18);
+  max-width:calc(var(--tok)*.95);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  -webkit-text-stroke:.5px rgba(0,0,0,.5);
+  text-shadow:0 1px 2px rgba(0,0,0,.45);
+  pointer-events:none;
+}
 .nameplate-wrap{pointer-events:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);padding-top:4px}
 .nameplate{width:max-content;max-width:100%;white-space:normal;overflow:hidden;text-overflow:clip;
   line-height:1.05;font-weight:800;font-size:13px;text-align:center;color:#f8fafc;padding:4px 12px;border-radius:999px;
@@ -251,15 +294,15 @@ body.no-scroll{overflow:hidden}
 <script>
 /* ===== ROLES & FORMATIONS ===== */
 const rolesConfig={
-  POR:{group:'GK',defaultLabel:'Portiere',color:'var(--role-GK)',hex:'#24a148',icon:'🧤'},
-  DC:{group:'DF',defaultLabel:'Difensore Centrale',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
-  TS:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
-  TD:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#0f62fe',icon:'🛡️'},
-  CDS:{group:'MF',defaultLabel:'Centrocampista Difensivo',color:'var(--role-MF)',hex:'#8a3ffc',icon:'⚙️'},
-  COC:{group:'MF',defaultLabel:'Centrocampista Offensivo',color:'var(--role-MF)',hex:'#8a3ffc',icon:'⚙️'},
-  AS:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'},
-  ATT:{group:'FW',defaultLabel:'Attaccante',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'},
-  AD:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#fa4d56',icon:'🎯'}
+  POR:{group:'GK',defaultLabel:'Portiere',color:'var(--role-GK)',hex:'#fbbf24',icon:'🧤'},
+  DC:{group:'DF',defaultLabel:'Difensore Centrale',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  TS:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  TD:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  CDS:{group:'MF',defaultLabel:'Centrocampista Difensivo',color:'var(--role-MF)',hex:'#86efac',icon:'⚙️'},
+  COC:{group:'MF',defaultLabel:'Centrocampista Offensivo',color:'var(--role-MF)',hex:'#86efac',icon:'⚙️'},
+  AS:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'},
+  ATT:{group:'FW',defaultLabel:'Attaccante',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'},
+  AD:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'}
 };
 const roleCodes=Object.keys(rolesConfig);
 const FORMATIONS={
@@ -329,7 +372,7 @@ function fileToDataUrlResized(file,maxSide=640,quality=0.85){
     r.onerror=reject; r.readAsDataURL(file);
   });
 }
-function updateTok(){const f=byId('field'); if(!f) return; const r=f.getBoundingClientRect(); const s=Math.max(56,Math.min(100,Math.round(Math.min(r.width,r.height)*.09))); f.style.setProperty('--tok',s+'px')}
+function updateTok(){const f=byId('field'); if(!f) return; const r=f.getBoundingClientRect(); const s=Math.max(60,Math.min(110,Math.round(Math.min(r.width,r.height)*.1))); f.style.setProperty('--tok',s+'px')}
 function oKey(f,p){return `${f}:${p}`}
 function getXY(f,pos){const ov=posOverrides[oKey(f,pos.id)]; return {x:ov?ov.x:pos.x, y:ov?ov.y:pos.y}}
 function isDark(hex){const c=hex.replace('#','');const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);return(0.299*r+0.587*g+0.114*b)/255<0.5}
@@ -362,10 +405,13 @@ function renderField(){
     const t=document.createElement('button'); t.type='button'; t.className='token';
     const from=mix(cfg.hex,0.35); const to=mix(cfg.hex,-0.25); const text=idealTextColor(to);
     t.style.width=tok+'px'; t.style.height=tok+'px'; t.style.color=text;
-    t.style.backgroundImage=`radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(#00000022,#00000022), conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%), linear-gradient(to bottom, ${from}, ${to})`;
-    t.style.boxShadow='inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 18px rgba(0,0,0,.35), 0 14px 32px rgba(0,0,0,.45)';
+    t.style.setProperty('--tok-grad', `linear-gradient(to bottom, ${from}, ${to})`);
     t.setAttribute('aria-label',`${pl?pl.name:rl}${pl&&pl.number&&pl.number!=='none'?`, numero ${pl.number}`:''} – ${rl}`);
-    if(pl && pl.photo){ const im=new Image(); im.src=pl.photo; t.appendChild(im); const vg=document.createElement('div'); vg.style.position='absolute'; vg.style.inset='0'; vg.style.borderRadius='999px'; vg.style.background='radial-gradient(120% 120% at 50% 35%, transparent 55%, rgba(0,0,0,.45) 85%)'; vg.style.mixBlendMode='multiply'; t.appendChild(vg); }
+    if(pl && pl.photo){
+      const im=new Image(); im.src=pl.photo; t.appendChild(im);
+      const vg=document.createElement('div'); vg.style.position='absolute'; vg.style.inset='0'; vg.style.borderRadius='999px'; vg.style.background='radial-gradient(120% 120% at 50% 35%, transparent 55%, rgba(0,0,0,.45) 85%)'; vg.style.mixBlendMode='multiply'; t.appendChild(vg);
+      const nmOv=document.createElement('div'); nmOv.className='nm'; nmOv.textContent=pl.name; t.appendChild(nmOv);
+    }
     const glass=document.createElement('div'); glass.style.position='absolute'; glass.style.inset='0'; glass.style.borderRadius='999px'; glass.style.pointerEvents='none'; glass.style.background='linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 35%)'; t.appendChild(glass);
     const number=pl&&pl.number&&pl.number!=='none'?pl.number:null;
     if(number){ const nb=document.createElement('div'); nb.className='num'; nb.textContent=number; t.appendChild(nb); }
@@ -375,7 +421,11 @@ function renderField(){
     t.addEventListener('pointerup', openIfNotDragged, {passive:false});
     if(!moveLocked) enableDrag(t,slot,pos.id);
     wrap.appendChild(t);
-    const chip=document.createElement('div'); chip.className='role-badge'; chip.innerHTML=`<span>${roleIcon(pos.role,13)}</span><span>${rl}</span>`; wrap.appendChild(chip);
+    const chip=document.createElement('div'); chip.className='role-badge'; chip.innerHTML=`<span>${roleIcon(pos.role,13)}</span><span>${rl}</span>`;
+    chip.style.setProperty('--rb-bg', cfg.color);
+    chip.style.setProperty('--rb-fg', idealTextColor(cfg.hex));
+    chip.style.setProperty('--rb-b', mix(cfg.hex,-0.25));
+    wrap.appendChild(chip);
     const plateWrap=document.createElement('div'); plateWrap.className='nameplate-wrap';
     const base=Math.max(tok*1.8,128); const maxW=Math.min(window.innerWidth*0.66,420); plateWrap.style.width=Math.min(base,maxW)+'px';
     const plate=document.createElement('div'); plate.className='nameplate'; plate.textContent=pl?pl.name:rl; plate.title=plate.textContent; plate.addEventListener('pointerdown',e=>{const el=e.currentTarget; el.style.animation='none'; requestAnimationFrame(()=>{el.style.animation='token-marquee 6s linear infinite';});}); plate.addEventListener('pointerup',e=>{e.currentTarget.style.animation='none';}); plate.addEventListener('pointercancel',e=>{e.currentTarget.style.animation='none';}); plateWrap.appendChild(plate);
@@ -550,7 +600,7 @@ const viewerHtmlFromState = (st) => {
     const ov = (st.posOverrides || {})[`${st.formationKey}:${p.id}`];
     return { x: ov ? ov.x : p.x, y: ov ? ov.y : p.y };
   };
-  const roleCfg = Storage.get("roleConfig", ROLE_DEFAULTS);
+  const roleCfg = Storage.get("roleConfig", rolesConfig);
 
   const css = `
 :root{ --ink:#0b0b0b; --paper:#ffffff; }
@@ -562,12 +612,19 @@ body{ margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Aria
 .gridlines{ position:absolute; inset:0; width:100%; height:100%; }
 .tokenWrap{ position:absolute; left:0; top:0; transform:translate(var(--x), var(--y)); /* --x/y in px via JS */ text-align:center; z-index:1; }
 .token{ position:relative; display:block; width:56px; height:56px; margin:0 auto; border-radius:999px; border:3px solid transparent;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 18px rgba(0,0,0,.35), 0 14px 32px rgba(0,0,0,.45); overflow:hidden; }
+        box-shadow:0 14px 38px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.25) inset; overflow:hidden;
+        background:linear-gradient(#1113,#1113) padding-box,
+                   conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%) border-box,
+                   var(--tok-grad,linear-gradient(180deg,#475569,#334155)) border-box; }
+.token::before{content:"";position:absolute;inset:3px;border-radius:999px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.06),inset 0 12px 22px rgba(0,0,0,.35);pointer-events:none;}
+.token::after{content:"";position:absolute;inset:0;border-radius:999px;opacity:0;background:linear-gradient(225deg,rgba(255,255,255,.18),rgba(255,255,255,0) 40%);transition:opacity .12s ease;pointer-events:none;}
+.token:hover::after{opacity:.5;}
 .tokenRing{ position:absolute; inset:-3px; border-radius:999px; box-shadow:0 0 0 3px var(--ring), 0 0 24px var(--halo); pointer-events:none; }
 .tokenImg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:999px; }
 .tokenVignette{ position:absolute; inset:0; border-radius:999px; background:radial-gradient(120% 120% at 50% 35%, transparent 55%, rgba(0,0,0,.45) 85%); mix-blend-mode:multiply; }
+.nm{ position:absolute; left:50%; bottom:7%; transform:translateX(-50%); padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(11,18,32,.85); color:#f8fafc; font-weight:800; font-size:10px; max-width:95%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; -webkit-text-stroke:.5px rgba(0,0,0,.5); text-shadow:0 1px 2px rgba(0,0,0,.45); pointer-events:none; }
 .num{ position:absolute; right:-6px; bottom:-6px; min-width:20px; height:20px; border-radius:999px; background:#0b1220; color:#e5e7eb; font-weight:900; font-size:11px; border:2px solid #334155; display:grid; place-content:center; z-index:3; }
-.roleChip{ display:inline-flex; align-items:center; gap:6px; margin-bottom:6px; padding:2px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.85); color:#eef2ff; backdrop-filter:blur(4px); font:700 11px/1.1 system-ui; }
+.roleChip{ display:inline-flex; align-items:center; gap:6px; margin-bottom:6px; padding:2px 8px; border-radius:999px; border:1px solid var(--rb-b,#334155); background:var(--rb-bg,rgba(9,14,22,.85)); color:var(--rb-fg,#eef2ff); backdrop-filter:blur(4px); font:700 11px/1.1 system-ui; }
 .namePlate{ display:inline-block; margin-top:6px; padding:2px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(10,14,22,.82); color:#f8fafc; box-shadow:0 2px 8px rgba(0,0,0,.45); backdrop-filter:blur(4px); font-weight:800; font-size:13px; line-height:1.05; max-width:min(60vw,420px); }
 .nameText{ white-space:normal; overflow:visible; text-overflow:clip; -webkit-text-stroke:.5px rgba(0,0,0,.5); text-shadow:0 1px 2px rgba(0,0,0,.45); }
 .side{ display:flex; flex-direction:column; gap:8px; }
@@ -617,12 +674,15 @@ function placeAll(){
     const roleChip = document.createElement('div');
     roleChip.className = 'roleChip';
     roleChip.textContent = (ROLE[pos.role]?.label || pos.role);
+    roleChip.style.setProperty('--rb-bg', col);
+    roleChip.style.setProperty('--rb-fg', txt);
+    roleChip.style.setProperty('--rb-b', mix(col,-0.25));
     wrap.appendChild(roleChip);
 
     // cerchio
     const t = document.createElement('div');
     t.className = 'token';
-    t.style.backgroundImage = 'radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(#00000022,#00000022), conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%), linear-gradient(to bottom,'+from+','+to+')';
+    t.style.setProperty('--tok-grad', 'linear-gradient(to bottom,'+from+','+to+')');
 
     const ringEl = document.createElement('div');
     ringEl.className = 'tokenRing';
@@ -637,6 +697,10 @@ function placeAll(){
       const vg = document.createElement('div');
       vg.className = 'tokenVignette';
       t.appendChild(vg);
+      const nmOv = document.createElement('div');
+      nmOv.className = 'nm';
+      nmOv.textContent = nm;
+      t.appendChild(nmOv);
     }
 
     if(pl && pl.number && pl.number !== 'none'){
