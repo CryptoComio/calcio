@@ -637,14 +637,14 @@ function placeAll(){
     const pl = id ? ST.players.find(q=>q.id===id) : null;
     const roleLabel = (ROLE[pos.role]?.label || pos.role);
     const name = pl ? pl.name : roleLabel;
-    const col = (ROLE[pos.role]?.color)||"#999";
+      const col = (ROLE[pos.role]?.hex)||"#999";
     const from = mix(col, +0.35), to = mix(col, -0.25);
     const ring = mix(col, +0.15), halo = mix(col, +0.55);
 
     const wrap = document.createElement('div');
     wrap.className = 'tokenWrap';
-    // convertiamo % -> px; centriamo il token (56px) usando translate(-50%,-50%) in px
-    const ov = ST.posOverrides ? ST.posOverrides[\`${ST.formationKey}:${pos.id}\`] : null;
+      // convertiamo % -> px; centriamo il token (56px) usando translate(-50%,-50%) in px
+      const ov = ST.posOverrides ? ST.posOverrides[\`\${ST.formationKey}:\${pos.id}\`] : null;
     const xPerc = ov ? ov.x : pos.x;
     const yPerc = ov ? ov.y : pos.y;
     const x = xPerc/100*W;
@@ -700,7 +700,7 @@ function placeAll(){
 
   // lista
   Object.keys(ROLE).forEach(code=>{
-    const col = (ROLE[code]?.color)||"#999";
+    const col = (ROLE[code]?.hex)||"#999";
     const txt = idealTextColor(col);
     const box = document.createElement('div');
     box.className='group';
