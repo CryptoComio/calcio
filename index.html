@@ -313,9 +313,15 @@ const FORMATIONS={
               {id:'POR',role:'POR',x:50,y:92} ]
 };
 function roleLabel(code){return Storage.get('roleName_'+code, rolesConfig[code].defaultLabel)}
-function setRoleLabel(code,label){Storage.set('roleName_'+code,label)}
+function setRoleLabel(code,label){
+  Storage.set('roleName_'+code,label);
+  saveStateToServer();
+}
 function roleTag(code){return Storage.get('roleTag_'+code, code)}
-function setRoleTag(code,tag){Storage.set('roleTag_'+code,tag)}
+function setRoleTag(code,tag){
+  Storage.set('roleTag_'+code,tag);
+  saveStateToServer();
+}
 
 /* ===== STORAGE WRAPPER ===== */
 const Mem={};
@@ -338,6 +344,39 @@ let snap=Storage.get('snap',true);
 let anticoll=Storage.get('anticoll',true);
 let __editing=null, __pendingPos=null, __roleEditing=null;
 
+async function loadStateFromServer(){
+  try{
+    const res = await fetch('/api/state');
+    if(!res.ok) return;
+    const st = await res.json();
+    formationKey = st.formationKey || formationKey;
+    players = st.players || players;
+    lineup = st.lineup || lineup;
+    teamName = st.teamName !== undefined ? st.teamName : teamName;
+    coachName = st.coachName !== undefined ? st.coachName : coachName;
+    logo = st.logo || logo;
+    posOverrides = st.posOverrides || posOverrides;
+    if(st.roleNames) Object.entries(st.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+    if(st.roleTags) Object.entries(st.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+    Storage.set('formationKey',formationKey);
+    Storage.set('players',players);
+    Storage.set('lineup',lineup);
+    Storage.set('teamName',teamName);
+    Storage.set('coachName',coachName);
+    Storage.set('logo',logo);
+    Storage.set('posOverrides',posOverrides);
+    renderAll();
+  }catch(e){console.warn('backend load failed',e);}
+}
+
+function saveStateToServer(){
+  fetch('/api/state',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(buildShareState())
+  }).catch(e=>console.warn('backend save failed',e));
+}
+
 /* Seed 11 giocatori se primo avvio */
 if(players.length===0){
   const mk=(n,r,num)=>({id:crypto.randomUUID(),name:n,role:r,number:String(num),photo:'',absent:false,notes:'',createdAt:Date.now()});
@@ -348,6 +387,7 @@ if(players.length===0){
           TS:players.find(p=>p.role==='TS').id, DC1:players.filter(p=>p.role==='DC')[0].id, DC2:players.filter(p=>p.role==='DC')[1].id,
           TD:players.find(p=>p.role==='TD').id, POR:players.find(p=>p.role==='POR').id };
   Storage.set('players',players); Storage.set('lineup',lineup);
+  saveStateToServer();
 }
 
 /* ===== UTILS ===== */
@@ -442,7 +482,7 @@ function renderList(){
       const R=document.createElement('div');
       const b1=document.createElement('button'); b1.className='btn'; b1.textContent='Modifica'; b1.onclick=()=>openPlayer(p);
       const b2=document.createElement('button'); b2.className='btn primary'; b2.textContent='Assegna';
-      b2.onclick=()=>{ const posId=firstFree(code); if(!posId) return; lineup[posId]=p.id; Storage.set('lineup',lineup); renderField() };
+        b2.onclick=()=>{ const posId=firstFree(code); if(!posId) return; lineup[posId]=p.id; Storage.set('lineup',lineup); saveStateToServer(); renderField() };
       R.appendChild(b1); R.appendChild(b2);
       row.appendChild(L); row.appendChild(R); box.appendChild(row);
     });
@@ -461,7 +501,7 @@ function showRoleMenu(pos, player, anchor){
   editLabel.onclick=()=>{ m.remove(); openRoleLabelEditor(pos.role); }; m.appendChild(editLabel);
   if(player){
     const rem=document.createElement('div'); rem.className='menu-item'; rem.textContent='Rimuovi da posizione';
-    rem.onclick=()=>{ delete lineup[pos.id]; Storage.set('lineup',lineup); m.remove(); renderField(); };
+    rem.onclick=()=>{ delete lineup[pos.id]; Storage.set('lineup',lineup); saveStateToServer(); m.remove(); renderField(); };
     m.appendChild(rem);
     const ed=document.createElement('div'); ed.className='menu-item'; ed.textContent='Modifica giocatore';
     ed.onclick=()=>{ m.remove(); openPlayer(player); }; m.appendChild(ed);
@@ -473,7 +513,7 @@ function showRoleMenu(pos, player, anchor){
       const it=document.createElement('div'); it.className='menu-item';
       it.innerHTML=`<div class="av" style="width:24px;height:24px;border-radius:999px;overflow:hidden">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
                     <div><div>${p.name}</div><div style="font-size:11px;opacity:.7">#${p.number==='none'?'—':p.number} · Ordine ${i+1}${p.absent?' · Assente':''}</div></div>`;
-      it.onclick=()=>{ lineup[pos.id]=p.id; Storage.set('lineup',lineup); m.remove(); renderField(); };
+        it.onclick=()=>{ lineup[pos.id]=p.id; Storage.set('lineup',lineup); saveStateToServer(); m.remove(); renderField(); };
       m.appendChild(it);
     });
   }else{
@@ -546,7 +586,7 @@ function enableDrag(token,slot,posId){
     const nx=((px-r.left)/r.width)*100, ny=((py-r.top)/r.height)*100;
     slot.style.left=nx+'%'; slot.style.top=ny+'%';
     posOverrides[oKey(formationKey,posId)]={x:+nx.toFixed(2),y:+ny.toFixed(2)};
-    Storage.set('posOverrides',posOverrides);
+      Storage.set('posOverrides',posOverrides); saveStateToServer();
     setTimeout(()=>{ token.__dragged=false; },50);
   }
 }
@@ -572,15 +612,15 @@ async function handlePlayerSave(){
   let photo=__editing?(__editing.photo||''):'';
   if(file){ photo=await fileToDataUrlResized(file) }
   if(__editing){ Object.assign(__editing,{name: name, role: role, number: num, absent: abs, notes: notes, photo: photo}); }
-  else { const p={id:crypto.randomUUID(),name,role,number:num,absent:abs,notes,photo,createdAt:Date.now()}; players.push(p); if(__pendingPos){ lineup[__pendingPos]=p.id; Storage.set('lineup',lineup) } }
-  Storage.set('players',players); renderList(); renderField(); closeModal('#playerM');
+    else { const p={id:crypto.randomUUID(),name,role,number:num,absent:abs,notes,photo,createdAt:Date.now()}; players.push(p); if(__pendingPos){ lineup[__pendingPos]=p.id; Storage.set('lineup',lineup); saveStateToServer(); } }
+    Storage.set('players',players); saveStateToServer(); renderList(); renderField(); closeModal('#playerM');
 }
 function handlePlayerDelete(){
   if(!__editing) return; const id=__editing.id;
   Object.keys(lineup).forEach(k=>{ if(lineup[k]===id) delete lineup[k] });
   players=players.filter(p=>p.id!==id);
-  Storage.set('players',players); Storage.set('lineup',lineup);
-  renderList(); renderField(); closeModal('#playerM');
+    Storage.set('players',players); Storage.set('lineup',lineup); saveStateToServer();
+    renderList(); renderField(); closeModal('#playerM');
 }
 
 /* ===== SHARE / EXPORT HTML ===== */
@@ -797,7 +837,7 @@ function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'}
 function exportToHTML(){ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) }
 
 /* ===== EVENTS ===== */
-byId('formation').onchange=e=>{formationKey=e.target.value; Storage.set('formationKey',formationKey); renderField()};
+byId('formation').onchange=e=>{formationKey=e.target.value; Storage.set('formationKey',formationKey); saveStateToServer(); renderField()};
 byId('search').oninput=renderList;
 byId('add').onclick=()=>openPlayer();
 byId('pSave').onclick=handlePlayerSave; byId('pRemove').onclick=handlePlayerDelete; byId('pDelPhoto').onclick=()=>{ byId('pPhoto').value=''; byId('pPrev').innerHTML=''; if(__editing) __editing.photo=''; };
@@ -837,8 +877,8 @@ byId('roleLabelSave').onclick=()=>{
   closeModal('#roleLabelM');
 };
 byId('teamName').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
-byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); renderHeader(); closeModal('#infoM') });
-byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); renderHeader()});
+byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); saveStateToServer(); renderHeader(); closeModal('#infoM') });
+byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); saveStateToServer(); renderHeader()});
 byId('share').onclick=()=>openModal('#shareM');
 byId('dlHtml').onclick=exportToHTML;
 byId('downloadHtml').onclick=exportToHTML;
@@ -846,7 +886,7 @@ byId('downloadHtml').onclick=exportToHTML;
 byId('lock').onclick=()=>{ moveLocked=!moveLocked; Storage.set('moveLocked',moveLocked); renderHeader(); renderField() };
 byId('snap').onchange=e=>{ snap=!!e.target.checked; Storage.set('snap',snap) };
 byId('anticoll').onchange=e=>{ anticoll=!!e.target.checked; Storage.set('anticoll',anticoll) };
-byId('reset').onclick=()=>{ const pref=formationKey+':'; Object.keys(posOverrides).forEach(k=>{ if(k.startsWith(pref)) delete posOverrides[k] }); Storage.set('posOverrides',posOverrides); renderField() };
+byId('reset').onclick=()=>{ const pref=formationKey+':'; Object.keys(posOverrides).forEach(k=>{ if(k.startsWith(pref)) delete posOverrides[k] }); Storage.set('posOverrides',posOverrides); saveStateToServer(); renderField() };
 
 /* Modals generici */
 function openModal(id){const m=document.querySelector(id); if(m) m.classList.add('open')}
@@ -857,6 +897,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
 /* BOOT */
 function renderAll(){byId('formation').value=formationKey; renderHeader(); renderField(); renderList(); syncFieldTouch();}
 renderAll();
+loadStateFromServer();
 if(typeof ResizeObserver!=='undefined'){ new ResizeObserver(updateTok).observe(byId('field')) } window.addEventListener('resize',updateTok);
 </script>
 </body>
