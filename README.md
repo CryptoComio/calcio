@@ -7,6 +7,7 @@ Web lineup manager optimized for touch devices.
 - Editable role tags and labels with a unified color legend.
 - `exportToHTML()` generates a standalone HTML including field, roster and role legend, rendering formation and player list immediately.
 - Tokens show each player's full name in a pill above the circle on a single line and the role label inside the token, with role-colored rings and status badges for captains, cards and absences.
+- Import/export formations as JSON to merge or replace lineups across devices without a backend.
 
 ## Backend storage
 Run a small Node/Express server to share formations between devices.

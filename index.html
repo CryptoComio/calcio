@@ -211,10 +211,12 @@ body.no-scroll{overflow:hidden}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="search" class="input" placeholder="Cerca giocatore">
       </div>
-      <div id="list" class="list" style="max-height:60vh;overflow:auto"></div>
+  <div id="list" class="list" style="max-height:60vh;overflow:auto"></div>
     </div>
   </div>
 </div>
+
+<input id="jsonInput" type="file" accept="application/json" style="display:none">
 
 <!-- Modals -->
 <div class="modal" id="infoM"><div class="panel">
@@ -278,6 +280,21 @@ body.no-scroll{overflow:hidden}
     <input id="shareInfo" class="input" readonly value="Scarica un HTML auto-contenuto (offline)">
     <button class="btn primary" id="dlHtml">Scarica HTML</button>
   </div>
+  <div style="margin-top:12px;display:grid;gap:6px">
+    <div style="font-size:12px;opacity:.8">Scambia dati (JSON)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn" id="exportJson">Esporta JSON</button>
+      <button class="btn" id="importJsonReplace">Importa JSON (sostituisci)</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn" id="importJsonMerge">Importa JSON (unisci)</button>
+      <button class="btn" id="importJsonClipboard">Incolla da Appunti</button>
+    </div>
+    <p style="font-size:12px;opacity:.7">
+      • <b>Sostituisci</b>: rimpiazza completamente i dati.<br>
+      • <b>Unisci</b>: aggiunge/aggiorna giocatori e lineup senza perdere i tuoi.
+    </p>
+  </div>
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn" data-close="#shareM">Chiudi</button></div>
 </div></div>
 
@@ -297,6 +314,8 @@ const rolesConfig={
   AD:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'}
 };
 const roleCodes=Object.keys(rolesConfig);
+const SCHEMA_VERSION = 1;
+const nowIso = () => new Date().toISOString();
 const FORMATIONS={
   '4-2-1-3':[ {id:'ATT',role:'ATT',x:50,y:14},{id:'AS',role:'AS',x:25,y:22},{id:'AD',role:'AD',x:75,y:22},
               {id:'COC',role:'COC',x:50,y:36},{id:'CDS_L',role:'CDS',x:40,y:52},{id:'CDS_R',role:'CDS',x:60,y:52},
@@ -330,6 +349,8 @@ const Storage={
   set:(k,v)=>{const s=JSON.stringify(v);try{ if(s.length>4_500_000) throw new Error('too_large'); localStorage.setItem(k,s); return true; }
               catch(_){ try{sessionStorage.setItem(k,s)}catch(_){} Mem[k]=v; notify("Spazio locale insufficiente: salvato in sessione."); return false; } }
 };
+
+Object.assign(rolesConfig, Storage.get('roleConfig', rolesConfig));
 
 /* ===== STATE ===== */
 let formationKey=Storage.get('formationKey','4-2-1-3');
@@ -626,6 +647,8 @@ function handlePlayerDelete(){
 /* ===== SHARE / EXPORT HTML ===== */
 function buildShareState(){
   return {
+    __version: SCHEMA_VERSION,
+    __savedAt: nowIso(),
     formationKey,
     players,
     lineup,
@@ -634,7 +657,8 @@ function buildShareState(){
     logo,
     posOverrides,
     roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)])),
-    roleTags:Object.fromEntries(roleCodes.map(c=>[c,roleTag(c)]))
+    roleTags:Object.fromEntries(roleCodes.map(c=>[c,roleTag(c)])),
+    roleConfig: rolesConfig
   };
 }
 const viewerHtmlFromState = (st) => {
@@ -645,9 +669,10 @@ const viewerHtmlFromState = (st) => {
   };
   const roleCfg = {};
   roleCodes.forEach(code=>{
+    const cfg = st.roleConfig?.[code] || rolesConfig[code];
     roleCfg[code]={
-      hex: rolesConfig[code].hex,
-      label: st.roleNames?.[code] || rolesConfig[code].defaultLabel,
+      hex: cfg.hex,
+      label: st.roleNames?.[code] || cfg.defaultLabel,
       tag: st.roleTags?.[code] || code
     };
   });
@@ -836,6 +861,111 @@ window.addEventListener('resize', ()=>{ field.querySelectorAll('.tokenWrap').for
 function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 function exportToHTML(){ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) }
 
+function isPlainObject(x){ return x && typeof x === "object" && !Array.isArray(x); }
+
+function validateState(s){
+  if (!isPlainObject(s)) return "File non valido";
+  if (typeof s.__version !== "number") return "Versione schema assente o non valida";
+  if (!Array.isArray(s.players)) return "Campo 'players' non valido";
+  if (!isPlainObject(s.lineup)) return "Campo 'lineup' non valido";
+  if (typeof s.formationKey !== "string") return "Campo 'formationKey' non valido";
+  return null;
+}
+
+function applyStateReplace(s){
+  formationKey = s.formationKey ?? "4-2-1-3";
+  players = Array.isArray(s.players) ? s.players : [];
+  lineup = isPlainObject(s.lineup) ? s.lineup : {};
+  teamName = s.teamName ?? "";
+  coachName = s.coachName ?? "";
+  logo = s.logo ?? "";
+  posOverrides = isPlainObject(s.posOverrides) ? s.posOverrides : {};
+  if (s.roleNames) Object.entries(s.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+  if (s.roleTags) Object.entries(s.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+  if (s.roleConfig) { Object.assign(rolesConfig, s.roleConfig); Storage.set('roleConfig', rolesConfig); }
+  Storage.set('formationKey', formationKey);
+  Storage.set('players', players);
+  Storage.set('lineup', lineup);
+  Storage.set('teamName', teamName);
+  Storage.set('coachName', coachName);
+  Storage.set('logo', logo);
+  Storage.set('posOverrides', posOverrides);
+  saveStateToServer();
+  renderAll();
+  notify("Dati importati (sostituzione).");
+}
+
+function applyStateMerge(s){
+  const byId = new Map(players.map(p => [p.id, p]));
+  (s.players || []).forEach(p => byId.set(p.id, p));
+  players = Array.from(byId.values()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const ids = new Set(players.map(p=>p.id));
+  const next = { ...lineup };
+  Object.entries(s.lineup || {}).forEach(([pos,pid])=>{ if (ids.has(pid)) next[pos]=pid; });
+  lineup = next;
+  if (s.teamName) teamName = s.teamName;
+  if (s.coachName) coachName = s.coachName;
+  if (s.logo) logo = s.logo;
+  if (s.posOverrides) posOverrides = { ...posOverrides, ...s.posOverrides };
+  if (s.roleNames) Object.entries(s.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+  if (s.roleTags) Object.entries(s.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+  if (s.roleConfig) { Object.keys(s.roleConfig).forEach(code=>{ rolesConfig[code]={...rolesConfig[code], ...s.roleConfig[code]}; }); Storage.set('roleConfig', rolesConfig); }
+  if (s.formationKey) formationKey = s.formationKey;
+  Storage.set('formationKey', formationKey);
+  Storage.set('players', players);
+  Storage.set('lineup', lineup);
+  Storage.set('teamName', teamName);
+  Storage.set('coachName', coachName);
+  Storage.set('logo', logo);
+  Storage.set('posOverrides', posOverrides);
+  saveStateToServer();
+  renderAll();
+  notify("Dati importati (unione).");
+}
+
+function downloadJson(){
+  const st = buildShareState();
+  const blob = new Blob([JSON.stringify(st,null,2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safe = (teamName || 'formazione').toLowerCase().replace(/[^a-z0-9-_]+/gi,'-');
+  a.href = url;
+  a.download = `${safe}-${(st.__savedAt||'').slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+async function importJsonFromFile(mode){
+  const input = byId('jsonInput');
+  input.value = '';
+  input.onchange = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try{
+      const txt = await f.text();
+      const obj = JSON.parse(txt);
+      const err = validateState(obj);
+      if (err) return alert(err);
+      mode === 'replace' ? applyStateReplace(obj) : applyStateMerge(obj);
+    } catch(e){
+      console.error(e); alert('Impossibile leggere il file JSON.');
+    }
+  };
+  input.click();
+}
+
+async function importJsonFromClipboard(mode){
+  try{
+    const txt = await navigator.clipboard.readText();
+    const obj = JSON.parse(txt);
+    const err = validateState(obj);
+    if (err) return alert(err);
+    mode === 'replace' ? applyStateReplace(obj) : applyStateMerge(obj);
+  } catch(e){
+    console.error(e); alert('Appunti non disponibili o JSON non valido.');
+  }
+}
+
 /* ===== EVENTS ===== */
 byId('formation').onchange=e=>{formationKey=e.target.value; Storage.set('formationKey',formationKey); saveStateToServer(); renderField()};
 byId('search').oninput=renderList;
@@ -882,6 +1012,10 @@ byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&
 byId('share').onclick=()=>openModal('#shareM');
 byId('dlHtml').onclick=exportToHTML;
 byId('downloadHtml').onclick=exportToHTML;
+byId('exportJson').onclick=downloadJson;
+byId('importJsonReplace').onclick=()=>importJsonFromFile('replace');
+byId('importJsonMerge').onclick=()=>importJsonFromFile('merge');
+byId('importJsonClipboard').onclick=()=>importJsonFromClipboard('replace');
 
 byId('lock').onclick=()=>{ moveLocked=!moveLocked; Storage.set('moveLocked',moveLocked); renderHeader(); renderField() };
 byId('snap').onchange=e=>{ snap=!!e.target.checked; Storage.set('snap',snap) };
