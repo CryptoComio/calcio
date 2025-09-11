@@ -53,12 +53,8 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   background:rgba(9,14,22,.92);
   color:#eef2ff;
   pointer-events:none;
-}
-.role-badge>div{
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  overflow:hidden;
+  max-width:min(60vw,240px);
+  white-space:normal;
   word-break:break-word;
 }
 .token-wrap{position:relative;display:grid;place-items:center;width:var(--tok);height:var(--tok)}
@@ -416,7 +412,10 @@ function renderField(){
     t.addEventListener('pointerup', openIfNotDragged, {passive:false});
     if(!moveLocked) enableDrag(t,slot,pos.id);
     wrap.appendChild(t);
-    const chip=document.createElement('div'); chip.className='role-badge'; chip.style.maxWidth=Math.max(120, tok*2.2)+'px'; chip.innerHTML=`<div>${pl?pl.name:rl}</div>`; wrap.appendChild(chip);
+    const chip=document.createElement('div');
+    chip.className='role-badge';
+    chip.textContent = pl ? pl.name : rl;
+    wrap.appendChild(chip);
     slot.appendChild(wrap); f.appendChild(slot);
   });
 }
@@ -608,7 +607,7 @@ body{ margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Aria
          box-shadow:0 0 0 1px rgba(0,0,0,.25) inset, 0 2px 6px rgba(0,0,0,.35);
          font-size:12px; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .num{ position:absolute; right:-6px; bottom:-6px; min-width:20px; height:20px; border-radius:999px; background:#0b1220; color:#e5e7eb; font-weight:900; font-size:11px; border:2px solid #334155; display:grid; place-content:center; z-index:3; }
-.nameChip{ display:inline-block; margin-bottom:6px; padding:3px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.92); color:#eef2ff; backdrop-filter:blur(4px); font:700 12px/1.05 system-ui; max-width:220px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+.nameChip{ display:inline-block; margin-bottom:6px; padding:3px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.92); color:#eef2ff; backdrop-filter:blur(4px); font:700 12px/1.05 system-ui; max-width:min(60vw,240px); word-break:break-word; }
 .side{ display:flex; flex-direction:column; gap:8px; }
 .group{ border:1px solid #263345; border-radius:10px; padding:8px; }
 .groupHdr{ display:flex; align-items:center; gap:8px; }
