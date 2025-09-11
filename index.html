@@ -237,7 +237,10 @@ body.no-scroll{overflow:hidden}
 
 <div class="modal" id="roleLabelM"><div class="panel">
   <h3 style="margin:0 0 8px">Etichetta ruolo</h3>
-  <input id="roleLabelInput" class="input" placeholder="Nome ruolo">
+  <div style="display:grid;gap:8px">
+    <input id="roleTagInput" class="input" placeholder="Tag">
+    <input id="roleLabelInput" class="input" placeholder="Nome ruolo">
+  </div>
   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
     <button class="btn" data-close="#roleLabelM">Annulla</button>
     <button class="btn primary" id="roleLabelSave">Salva</button>
@@ -311,6 +314,8 @@ const FORMATIONS={
 };
 function roleLabel(code){return Storage.get('roleName_'+code, rolesConfig[code].defaultLabel)}
 function setRoleLabel(code,label){Storage.set('roleName_'+code,label)}
+function roleTag(code){return Storage.get('roleTag_'+code, code)}
+function setRoleTag(code,tag){Storage.set('roleTag_'+code,tag)}
 
 /* ===== STORAGE WRAPPER ===== */
 const Mem={};
@@ -389,6 +394,7 @@ function renderField(){
     const pl=players.find(p=>p.id===lineup[pos.id]);
     const cfg=rolesConfig[pos.role];
     const rl=roleLabel(pos.role);
+    const tag=roleTag(pos.role);
     const wrap=document.createElement('div'); wrap.className='token-wrap';
     const ring=document.createElement('div'); ring.style.position='absolute'; ring.style.inset='0'; ring.style.borderRadius='999px'; ring.style.pointerEvents='none'; const ringCol=mix(cfg.hex,0.15); const halo=mix(cfg.hex,0.55); ring.style.boxShadow=`0 0 0 3px ${ringCol},0 0 ${Math.max(10,tok*0.5)}px ${halo}`; ring.style.filter='saturate(110%)'; wrap.appendChild(ring);
     const t=document.createElement('button'); t.type='button'; t.className='token';
@@ -412,7 +418,7 @@ function renderField(){
     wrap.appendChild(t);
     const chip=document.createElement('div');
     chip.className='role-badge';
-    chip.textContent = pl ? pl.name : rl;
+    chip.textContent = pl ? pl.name : tag;
     wrap.appendChild(chip);
     slot.appendChild(wrap); f.appendChild(slot);
   });
@@ -421,10 +427,10 @@ function firstFree(role){const ids=(FORMATIONS[formationKey]||[]).filter(p=>p.ro
 function renderList(){
   const root=byId('list'); root.innerHTML=''; const q=(byId('search').value||'').toLowerCase();
   roleCodes.forEach(code=>{
-    const label=roleLabel(code); const cfg=rolesConfig[code];
+    const label=roleLabel(code); const tag=roleTag(code); const cfg=rolesConfig[code];
     const g=document.createElement('div'); g.className='group';
     const header=document.createElement('div'); header.style.display='flex'; header.style.gap='8px'; header.style.alignItems='center';
-    const badge=document.createElement('span'); badge.className='badge'; badge.textContent=code; badge.style.background=cfg.color; badge.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent=tag; badge.style.background=cfg.color; badge.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020';
     header.appendChild(badge); const b=document.createElement('b'); b.textContent=label; header.appendChild(b); g.appendChild(header);
     const box=document.createElement('div');
     players.filter(p=>p.role===code && p.name.toLowerCase().includes(q)).forEach((p,i)=>{
@@ -485,6 +491,7 @@ function showRoleMenu(pos, player, anchor){
 
 function openRoleLabelEditor(code){
   __roleEditing=code;
+  byId('roleTagInput').value=roleTag(code);
   byId('roleLabelInput').value=roleLabel(code);
   openModal('#roleLabelM');
 }
@@ -577,14 +584,33 @@ function handlePlayerDelete(){
 }
 
 /* ===== SHARE / EXPORT HTML ===== */
-function buildShareState(){ return {formationKey,players,lineup,teamName,coachName,logo,posOverrides,roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)]))} }
+function buildShareState(){
+  return {
+    formationKey,
+    players,
+    lineup,
+    teamName,
+    coachName,
+    logo,
+    posOverrides,
+    roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)])),
+    roleTags:Object.fromEntries(roleCodes.map(c=>[c,roleTag(c)]))
+  };
+}
 const viewerHtmlFromState = (st) => {
   const form = FORMATIONS[st.formationKey] || [];
   const xy = (p) => {
     const ov = (st.posOverrides || {})[`${st.formationKey}:${p.id}`];
     return { x: ov ? ov.x : p.x, y: ov ? ov.y : p.y };
   };
-  const roleCfg = Storage.get("roleConfig", rolesConfig);
+  const roleCfg = {};
+  roleCodes.forEach(code=>{
+    roleCfg[code]={
+      hex: rolesConfig[code].hex,
+      label: st.roleNames?.[code] || rolesConfig[code].defaultLabel,
+      tag: st.roleTags?.[code] || code
+    };
+  });
 
   const css = `
 :root{ --ink:#0b0b0b; --paper:#ffffff; }
@@ -636,7 +662,8 @@ function placeAll(){
     const id = ST.lineup[pos.id];
     const pl = id ? ST.players.find(q=>q.id===id) : null;
     const roleLabel = (ROLE[pos.role]?.label || pos.role);
-    const name = pl ? pl.name : roleLabel;
+    const tag = (ROLE[pos.role]?.tag || pos.role);
+    const name = pl ? pl.name : tag;
       const col = (ROLE[pos.role]?.hex)||"#999";
     const from = mix(col, +0.35), to = mix(col, -0.25);
     const ring = mix(col, +0.15), halo = mix(col, +0.55);
@@ -706,7 +733,7 @@ function placeAll(){
     box.className='group';
     const hdr = document.createElement('div');
     hdr.className='groupHdr';
-    hdr.innerHTML = "<span class='sw' style='background:"+col+"'></span><b>"+(ROLE[code]?.label||code)+"</b><span class='code' style='background:"+col+";color:"+txt+"'>"+code+"</span>";
+    hdr.innerHTML = "<span class='sw' style='background:"+col+"'></span><b>"+(ROLE[code]?.label||code)+"</b><span class='code' style='background:"+col+";color:"+txt+"'>"+(ROLE[code]?.tag||code)+"</span>";
     box.appendChild(hdr);
 
     const wrap = document.createElement('div');
@@ -775,9 +802,40 @@ byId('search').oninput=renderList;
 byId('add').onclick=()=>openPlayer();
 byId('pSave').onclick=handlePlayerSave; byId('pRemove').onclick=handlePlayerDelete; byId('pDelPhoto').onclick=()=>{ byId('pPhoto').value=''; byId('pPrev').innerHTML=''; if(__editing) __editing.photo=''; };
 byId('editInfo').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
-byId('editRoles').onclick=()=>{const box=byId('rolesEditBox');box.innerHTML='';roleCodes.forEach(code=>{const div=document.createElement('div');div.innerHTML=`<label style="font-size:12px">${code}</label><input class="input" data-code="${code}" value="${roleLabel(code)}">`;box.appendChild(div);});openModal('#rolesM')};
-byId('rolesSave').onclick=()=>{byId('rolesEditBox').querySelectorAll('input[data-code]').forEach(inp=>{setRoleLabel(inp.dataset.code,inp.value.trim()||rolesConfig[inp.dataset.code].defaultLabel);});renderList();renderField();closeModal('#rolesM');};
-byId('roleLabelSave').onclick=()=>{if(!__roleEditing) return; const val=byId('roleLabelInput').value.trim()||rolesConfig[__roleEditing].defaultLabel; setRoleLabel(__roleEditing,val); renderList(); renderField(); closeModal('#roleLabelM');};
+byId('editRoles').onclick=()=>{
+  const box=byId('rolesEditBox'); box.innerHTML='';
+  roleCodes.forEach(code=>{
+    const div=document.createElement('div');
+    div.style.display='grid';
+    div.style.gridTemplateColumns='60px 1fr 1fr';
+    div.style.gap='6px';
+    div.style.alignItems='center';
+    div.innerHTML=`<span style="font-size:12px">${code}</span>
+      <input class="input role-tag" data-code="${code}" value="${roleTag(code)}" placeholder="Tag">
+      <input class="input role-label" data-code="${code}" value="${roleLabel(code)}" placeholder="Nome">`;
+    box.appendChild(div);
+  });
+  openModal('#rolesM');
+};
+byId('rolesSave').onclick=()=>{
+  byId('rolesEditBox').querySelectorAll('input.role-tag').forEach(inp=>{
+    setRoleTag(inp.dataset.code, inp.value.trim() || inp.dataset.code);
+  });
+  byId('rolesEditBox').querySelectorAll('input.role-label').forEach(inp=>{
+    setRoleLabel(inp.dataset.code, inp.value.trim() || rolesConfig[inp.dataset.code].defaultLabel);
+  });
+  renderList(); renderField();
+  closeModal('#rolesM');
+};
+byId('roleLabelSave').onclick=()=>{
+  if(!__roleEditing) return;
+  const tag=byId('roleTagInput').value.trim()||__roleEditing;
+  const val=byId('roleLabelInput').value.trim()||rolesConfig[__roleEditing].defaultLabel;
+  setRoleTag(__roleEditing,tag);
+  setRoleLabel(__roleEditing,val);
+  renderList(); renderField();
+  closeModal('#roleLabelM');
+};
 byId('teamName').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
 byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); renderHeader(); closeModal('#infoM') });
 byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); renderHeader()});
