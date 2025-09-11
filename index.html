@@ -42,17 +42,24 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  top:calc(var(--tok)*-0.5);
-  padding:2px 8px;
-  font-size:11px;
+  top:calc(var(--tok)*-0.55);
+  padding:4px 8px;
+  font-size:12px;
   font-weight:800;
-  white-space:nowrap;
+  line-height:1.05;
   border-radius:999px;
   backdrop-filter:blur(4px);
   border:1px solid rgba(255,255,255,.18);
-  background:rgba(9,14,22,.88);
+  background:rgba(9,14,22,.92);
   color:#eef2ff;
   pointer-events:none;
+}
+.role-badge>div{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  word-break:break-word;
 }
 .token-wrap{position:relative;display:grid;place-items:center;width:var(--tok);height:var(--tok)}
 .token{
@@ -97,7 +104,7 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
 
 /* foto */
 .token img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px;z-index:0}
-.nm{
+.role-in{
   position:absolute;
   left:50%;
   bottom:6%;
@@ -108,18 +115,14 @@ body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:line
   background:rgba(10,14,22,.78);
   color:#f8fafc;
   font-weight:800;
-  font-size:calc(var(--tok)*.18);
-  max-width:calc(var(--tok)*.88);
+  font-size:calc(var(--tok)*.20);
+  max-width:calc(var(--tok)*.9);
   line-height:1.05;
-  -webkit-text-stroke:.3px rgba(0,0,0,.5);
-  text-shadow:0 1px 2px rgba(0,0,0,.45);
   box-shadow:0 0 0 1px rgba(0,0,0,.25) inset, 0 2px 6px rgba(0,0,0,.35);
   pointer-events:none;
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
+  white-space:nowrap;
   overflow:hidden;
-  word-break:break-word;
+  text-overflow:ellipsis;
 }
 
 /* numero maglia */
@@ -371,37 +374,6 @@ function isDark(hex){const c=hex.replace('#','');const r=parseInt(c.slice(0,2),1
 function mix(hex,amt){const c=hex.replace('#','');let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);if(amt>0){r=Math.round(r+(255-r)*amt);g=Math.round(g+(255-g)*amt);b=Math.round(b+(255-b)*amt);}else{const p=-amt;r=Math.round(r*(1-p));g=Math.round(g*(1-p));b=Math.round(b*(1-p));}return`rgb(${r},${g},${b})`}
 function idealTextColor(hex){return isDark(hex)?'#e5e7eb':'#0b1020'}
 // Auto-fit del nome dentro alla ribbon (max 2 righe)
-function fitNameRibbon(el,text,tok){
-  const maxW=tok*0.88;
-  let fs=tok*0.19;
-  const min=10;
-  const fake=document.createElement('span');
-  fake.style.visibility='hidden';
-  fake.style.position='absolute';
-  fake.style.left='-9999px';
-  fake.style.whiteSpace='normal';
-  fake.style.wordBreak='break-word';
-  fake.style.display='-webkit-box';
-  fake.style.webkitBoxOrient='vertical';
-  fake.style.webkitLineClamp='2';
-  fake.style.lineHeight='1.05';
-  fake.style.maxWidth=maxW+'px';
-  document.body.appendChild(fake);
-  const fits=(size)=>{
-    fake.style.font=Math.round(size)+'px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif';
-    fake.textContent=text;
-    const h=fake.getBoundingClientRect().height;
-    const lh=size*1.05+0.5;
-    return h<=lh*2+1;
-  };
-  let ok=fs;
-  while(fs>=min){
-    if(fits(fs)){ok=fs;break;}
-    fs-=1;
-  }
-  el.style.fontSize=Math.round(Math.max(min,ok))+'px';
-  document.body.removeChild(fake);
-}
 function statusDots(tok,{captain,yellow,red,absent}){if(!captain&&!yellow&&!red&&!absent) return null;const size=Math.max(12,tok*0.18);const wrap=document.createElement('div');wrap.style.position='absolute';wrap.style.top='-4px';wrap.style.left='-4px';wrap.style.display='flex';wrap.style.gap='4px';if(captain){const c=document.createElement('div');c.textContent='C';c.style.width=size+4+'px';c.style.height=size+4+'px';c.style.display='grid';c.style.placeContent='center';c.style.borderRadius='999px';c.style.background='rgba(0,0,0,.7)';c.style.color='#fff';c.style.fontSize='10px';c.style.fontWeight='900';c.style.border='1px solid rgba(255,255,255,.3)';c.style.boxShadow='0 1px 3px rgba(0,0,0,.45)';wrap.appendChild(c);}if(yellow){const y=document.createElement('div');y.style.width='8px';y.style.height='12px';y.style.transform='rotate(6deg)';y.style.background='#facc15';y.style.borderRadius='2px';y.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(y);}if(red){const r=document.createElement('div');r.style.width='8px';r.style.height='12px';r.style.transform='rotate(-6deg)';r.style.background='#ef4444';r.style.borderRadius='2px';r.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(r);}if(absent){const a=document.createElement('div');a.style.width='12px';a.style.height='12px';a.style.borderRadius='999px';a.style.background='#fb923c';a.style.animation='token-pulse 1s ease-in-out infinite';a.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(a);}return wrap}
 
 function syncFieldTouch(){ const fld=byId('field'); if(!fld) return; fld.classList.toggle('unlocked', !moveLocked); }
@@ -434,10 +406,7 @@ function renderField(){
       const im=new Image(); im.src=pl.photo; t.appendChild(im);
       const vg=document.createElement('div'); vg.style.position='absolute'; vg.style.inset='0'; vg.style.borderRadius='999px'; vg.style.background='radial-gradient(120% 120% at 50% 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.38) 85%)'; vg.style.mixBlendMode='multiply'; t.appendChild(vg);
     }
-    const name=pl?pl.name:rl;
-    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=name;
-    fitNameRibbon(nm,name,tok);
-    t.appendChild(nm);
+    const roleEl=document.createElement('div'); roleEl.className='role-in'; roleEl.textContent=rl; t.appendChild(roleEl);
     const glass=document.createElement('div'); glass.style.position='absolute'; glass.style.inset='0'; glass.style.borderRadius='999px'; glass.style.pointerEvents='none'; glass.style.background='linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 35%)'; t.appendChild(glass);
     const number=pl&&pl.number&&pl.number!=='none'?pl.number:null;
     if(number){ const nb=document.createElement('div'); nb.className='num'; nb.textContent=number; t.appendChild(nb); }
@@ -447,7 +416,7 @@ function renderField(){
     t.addEventListener('pointerup', openIfNotDragged, {passive:false});
     if(!moveLocked) enableDrag(t,slot,pos.id);
     wrap.appendChild(t);
-    const chip=document.createElement('div'); chip.className='role-badge'; chip.textContent=rl; wrap.appendChild(chip);
+    const chip=document.createElement('div'); chip.className='role-badge'; chip.style.maxWidth=Math.max(120, tok*2.2)+'px'; chip.innerHTML=`<div>${pl?pl.name:rl}</div>`; wrap.appendChild(chip);
     slot.appendChild(wrap); f.appendChild(slot);
   });
 }
@@ -484,7 +453,7 @@ function showRoleMenu(pos, player, anchor){
   if(window.__menu){window.__menu.remove(); window.__menu=null;}
   const m=document.createElement('div'); m.className='menu-pop';
   const head=document.createElement('div'); head.className='menu-head';
-  head.textContent=pos.role+(pos.side?(' · '+pos.side):''); m.appendChild(head);
+  head.textContent=roleLabel(pos.role); m.appendChild(head);
   const editLabel=document.createElement('div'); editLabel.className='menu-item'; editLabel.textContent='Modifica etichetta ruolo';
   editLabel.onclick=()=>{ m.remove(); openRoleLabelEditor(pos.role); }; m.appendChild(editLabel);
   if(player){
@@ -634,13 +603,12 @@ body{ margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Aria
 .tokenRing{ position:absolute; inset:-3px; border-radius:999px; box-shadow:0 0 0 3px var(--ring), 0 0 24px var(--halo); pointer-events:none; }
 .tokenImg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:999px; }
 .tokenVignette{ position:absolute; inset:0; border-radius:999px; background:radial-gradient(120% 120% at 50% 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.38) 85%); mix-blend-mode:multiply; }
-.nameIn{ position:absolute; left:50%; bottom:6%; transform:translateX(-50%); max-width:88%; padding:2px 8px; border-radius:999px;
+.roleIn{ position:absolute; left:50%; bottom:6%; transform:translateX(-50%); max-width:88%; padding:2px 8px; border-radius:999px;
          border:1px solid rgba(255,255,255,.16); background:rgba(10,14,22,.78); color:#f8fafc; font-weight:800; line-height:1.05;
          box-shadow:0 0 0 1px rgba(0,0,0,.25) inset, 0 2px 6px rgba(0,0,0,.35);
-         -webkit-text-stroke:.3px rgba(0,0,0,.5); text-shadow:0 1px 2px rgba(0,0,0,.45);
-         font-size:12px; pointer-events:none; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+         font-size:12px; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .num{ position:absolute; right:-6px; bottom:-6px; min-width:20px; height:20px; border-radius:999px; background:#0b1220; color:#e5e7eb; font-weight:900; font-size:11px; border:2px solid #334155; display:grid; place-content:center; z-index:3; }
-.roleChip{ display:inline-block; margin-bottom:6px; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(9,14,22,.88); color:#eef2ff; backdrop-filter:blur(4px); font:700 11px/1.1 system-ui; }
+.nameChip{ display:inline-block; margin-bottom:6px; padding:3px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.92); color:#eef2ff; backdrop-filter:blur(4px); font:700 12px/1.05 system-ui; max-width:220px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
 .side{ display:flex; flex-direction:column; gap:8px; }
 .group{ border:1px solid #263345; border-radius:10px; padding:8px; }
 .groupHdr{ display:flex; align-items:center; gap:8px; }
@@ -670,7 +638,8 @@ function placeAll(){
   F.forEach(pos=>{
     const id = ST.lineup[pos.id];
     const pl = id ? ST.players.find(q=>q.id===id) : null;
-    const nm = pl ? pl.name : pos.role;
+    const roleLabel = (ROLE[pos.role]?.label || pos.role);
+    const name = pl ? pl.name : roleLabel;
     const col = (ROLE[pos.role]?.color)||"#999";
     const from = mix(col, +0.35), to = mix(col, -0.25);
     const ring = mix(col, +0.15), halo = mix(col, +0.55);
@@ -683,11 +652,11 @@ function placeAll(){
     wrap.style.setProperty('--x', (x - 0.5*56) + 'px');
     wrap.style.setProperty('--y', (y - 0.5*56) + 'px');
 
-    // chip ruolo (umano)
-    const roleChip = document.createElement('div');
-    roleChip.className = 'roleChip';
-    roleChip.textContent = (ROLE[pos.role]?.label || pos.role);
-    wrap.appendChild(roleChip);
+    // chip nome (sopra)
+    const nameChip = document.createElement('div');
+    nameChip.className = 'nameChip';
+    nameChip.textContent = name;
+    wrap.appendChild(nameChip);
 
     // cerchio
     const t = document.createElement('div');
@@ -712,44 +681,10 @@ function placeAll(){
       t.appendChild(vg);
     }
 
-    const nmEl = document.createElement('div');
-    nmEl.className = 'nameIn';
-    nmEl.textContent = nm;
-    // auto-fit: riduci font finché sta in 2 righe
-    (function autoFit(){
-      const maxW = 56 * 0.88;
-      let fs = 56 * 0.19;
-      const min = 10;
-      const fake = document.createElement('span');
-      fake.style.visibility='hidden';
-      fake.style.position='absolute';
-      fake.style.left='-9999px';
-      fake.style.whiteSpace='normal';
-      fake.style.wordBreak='break-word';
-      fake.style.display='-webkit-box';
-      fake.style.webkitBoxOrient='vertical';
-      fake.style.webkitLineClamp='2';
-      fake.style.lineHeight='1.05';
-      fake.style.maxWidth = maxW + 'px';
-      document.body.appendChild(fake);
-
-      const fits = (size) => {
-        fake.style.font = Math.round(size) + 'px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif';
-        fake.textContent = nm;
-        const h = fake.getBoundingClientRect().height;
-        const lineH = size * 1.05 + 0.5;
-        return h <= lineH * 2 + 1;
-      };
-
-      let ok = fs;
-      while (fs >= min) {
-        if (fits(fs)) { ok = fs; break; }
-        fs -= 1;
-      }
-      nmEl.style.fontSize = Math.round(Math.max(min, ok)) + 'px';
-      document.body.removeChild(fake);
-    })();
-    t.appendChild(nmEl);
+    const roleEl = document.createElement('div');
+    roleEl.className = 'roleIn';
+    roleEl.textContent = roleLabel;
+    t.appendChild(roleEl);
 
     if(pl && pl.number && pl.number !== 'none'){
       const num = document.createElement('div');
