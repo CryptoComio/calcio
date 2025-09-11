@@ -644,8 +644,11 @@ function placeAll(){
     const wrap = document.createElement('div');
     wrap.className = 'tokenWrap';
     // convertiamo % -> px; centriamo il token (56px) usando translate(-50%,-50%) in px
-    const x = (${xy.toString()})(pos).x/100*W;
-    const y = (${xy.toString()})(pos).y/100*H;
+    const ov = ST.posOverrides ? ST.posOverrides[\`${ST.formationKey}:${pos.id}\`] : null;
+    const xPerc = ov ? ov.x : pos.x;
+    const yPerc = ov ? ov.y : pos.y;
+    const x = xPerc/100*W;
+    const y = yPerc/100*H;
     wrap.style.setProperty('--x', (x - 0.5*56) + 'px');
     wrap.style.setProperty('--y', (y - 0.5*56) + 'px');
 
