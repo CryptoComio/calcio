@@ -544,68 +544,191 @@ function handlePlayerDelete(){
 
 /* ===== SHARE / EXPORT HTML ===== */
 function buildShareState(){ return {formationKey,players,lineup,teamName,coachName,logo,posOverrides,roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)]))} }
-function viewerHtmlFromState(st){
-  const form=FORMATIONS[st.formationKey]||[]; const rolesLabel=st.roleNames||{};
-  function xy(p){const ov=(st.posOverrides||{})[`${st.formationKey}:${p.id}`]; return {x:ov?ov.x:p.x, y:ov?ov.y:p.y} }
-  return `<!doctype html><html lang='it'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>${st.teamName||'Formazione'}</title><style>body{margin:0;font-family:system-ui;background:#0a0f1a;color:#e6edf3;font-size:16px} .container{max-width:900px;margin:0 auto;padding:12px} .layout{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:900px){.layout{grid-template-columns:minmax(0,2fr) 380px}}</style><body><div class="container">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${st.logo?`<img src='${st.logo}' style='width:100%;height:100%;object-fit:cover'>`:''}</div>
-  <div><div style="font-weight:800">${st.teamName||''}</div><div style="opacity:.8;font-size:12px">Allenatore: ${st.coachName||''}</div></div></div>
-  <div class="layout">
-    <div style="background:#121826;border:1px solid #273449;border-radius:14px;padding:10px">
-      <div style="position:relative;width:100%;aspect-ratio:9/16;border:1px solid #273449;border-radius:18px;background:linear-gradient(180deg,#166534,#064e3b)">
-        <svg viewBox='0 0 100 160' preserveAspectRatio='none' style='position:absolute;inset:0;width:100%;height:100%'>
+const viewerHtmlFromState = (st) => {
+  const form = FORMATIONS[st.formationKey] || [];
+  const xy = (p) => {
+    const ov = (st.posOverrides || {})[`${st.formationKey}:${p.id}`];
+    return { x: ov ? ov.x : p.x, y: ov ? ov.y : p.y };
+  };
+  const roleCfg = Storage.get("roleConfig", ROLE_DEFAULTS);
+
+  const css = `
+:root{ --ink:#0b0b0b; --paper:#ffffff; }
+*{ box-sizing:border-box }
+body{ margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; background:#0a0f1a; color:#e6edf3 }
+.wrap{ max-width:1200px; margin:0 auto; padding:12px; display:grid; gap:12px; grid-template-columns:minmax(0,2fr) 380px; }
+.card{ border:1px solid #263345; border-radius:14px; background:#121826; padding:10px; }
+.field{ position:relative; width:100%; aspect-ratio:9/16; border:1px solid #263345; border-radius:18px; background:linear-gradient(180deg,#166534,#064e3b); overflow:hidden; }
+.gridlines{ position:absolute; inset:0; width:100%; height:100%; }
+.tokenWrap{ position:absolute; left:0; top:0; transform:translate(var(--x), var(--y)); /* --x/y in px via JS */ text-align:center; z-index:1; }
+.token{ position:relative; display:block; width:56px; height:56px; margin:0 auto; border-radius:999px; border:3px solid transparent;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 18px rgba(0,0,0,.35), 0 14px 32px rgba(0,0,0,.45); overflow:hidden; }
+.tokenRing{ position:absolute; inset:-3px; border-radius:999px; box-shadow:0 0 0 3px var(--ring), 0 0 24px var(--halo); pointer-events:none; }
+.tokenImg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:999px; }
+.tokenVignette{ position:absolute; inset:0; border-radius:999px; background:radial-gradient(120% 120% at 50% 35%, transparent 55%, rgba(0,0,0,.45) 85%); mix-blend-mode:multiply; }
+.num{ position:absolute; right:-6px; bottom:-6px; min-width:20px; height:20px; border-radius:999px; background:#0b1220; color:#e5e7eb; font-weight:900; font-size:11px; border:2px solid #334155; display:grid; place-content:center; z-index:3; }
+.roleChip{ display:inline-flex; align-items:center; gap:6px; margin-bottom:6px; padding:2px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.85); color:#eef2ff; backdrop-filter:blur(4px); font:700 11px/1.1 system-ui; }
+.namePlate{ display:inline-block; margin-top:6px; padding:2px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(10,14,22,.82); color:#f8fafc; box-shadow:0 2px 8px rgba(0,0,0,.45); backdrop-filter:blur(4px); font-weight:800; font-size:13px; line-height:1.05; max-width:min(60vw,420px); }
+.nameText{ white-space:normal; overflow:visible; text-overflow:clip; -webkit-text-stroke:.5px rgba(0,0,0,.5); text-shadow:0 1px 2px rgba(0,0,0,.45); }
+.side{ display:flex; flex-direction:column; gap:8px; }
+.group{ border:1px solid #263345; border-radius:10px; padding:8px; }
+.groupHdr{ display:flex; align-items:center; gap:8px; }
+.sw{ width:12px; height:12px; border-radius:999px; display:inline-block; }
+.code{ margin-left:auto; font:800 12px/1 system-ui; padding:2px 8px; border-radius:999px; }
+@media (max-width:980px){ .wrap{ grid-template-columns:1fr; } }
+@media print{ body{ background:#fff; color:#000 } .card{ background:#fff; border-color:#ccc } .field{ border-color:#ccc } }
+`;
+
+  const js = `
+function hexToRgb(hex){ let h=(hex||"").replace("#",""); if(h.length===3) h=h.split("").map(x=>x+x).join(""); const n=parseInt(h||"000000",16); return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 }; }
+function mix(hex,pct){ const {r,g,b}=hexToRgb(hex); const t=pct>=0?255:0; const p=Math.abs(pct); const H=(a)=>Math.round(a+(t-a)*p); return "#"+[H(r),H(g),H(b)].map(v=>v.toString(16).padStart(2,"0")).join(""); }
+function idealTextColor(hex){ const {r,g,b}=hexToRgb(hex); const yiq=(r*299+g*587+b*114)/1000; return yiq>=140?"#0b0b0b":"#ffffff"; }
+const ST = ${JSON.stringify(st)};
+const ROLE = ${JSON.stringify(roleCfg)};
+
+const field = document.getElementById('xpitch');
+const list  = document.getElementById('xlist');
+
+// calcolo px assoluti dal % per posizionare il wrapper
+function placeAll(){
+  const r = field.getBoundingClientRect();
+  const W = r.width, H = r.height;
+  const F = ${JSON.stringify(form)};
+  field.innerHTML += ""; // noop per forzare reflow su alcuni browser
+  // crea token
+  F.forEach(pos=>{
+    const id = ST.lineup[pos.id];
+    const pl = id ? ST.players.find(q=>q.id===id) : null;
+    const nm = pl ? pl.name : pos.role;
+    const col = (ROLE[pos.role]?.color)||"#999";
+    const from = mix(col, +0.35), to = mix(col, -0.25);
+    const txt = idealTextColor(to);
+    const ring = mix(col, +0.15), halo = mix(col, +0.55);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'tokenWrap';
+    // convertiamo % -> px; centriamo il token (56px) usando translate(-50%,-50%) in px
+    const x = (${xy.toString()})(pos).x/100*W;
+    const y = (${xy.toString()})(pos).y/100*H;
+    wrap.style.setProperty('--x', (x - 0.5*56) + 'px');
+    wrap.style.setProperty('--y', (y - 0.5*56) + 'px');
+
+    // chip ruolo (umano)
+    const roleChip = document.createElement('div');
+    roleChip.className = 'roleChip';
+    roleChip.textContent = (ROLE[pos.role]?.label || pos.role);
+    wrap.appendChild(roleChip);
+
+    // cerchio
+    const t = document.createElement('div');
+    t.className = 'token';
+    t.style.backgroundImage = 'radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(#00000022,#00000022), conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%), linear-gradient(to bottom,'+from+','+to+')';
+
+    const ringEl = document.createElement('div');
+    ringEl.className = 'tokenRing';
+    ringEl.style.setProperty('--ring', ring);
+    ringEl.style.setProperty('--halo', halo);
+    t.appendChild(ringEl);
+
+    if(pl && pl.photo){
+      const img = document.createElement('img');
+      img.className = 'tokenImg'; img.src = pl.photo; img.alt = '';
+      t.appendChild(img);
+      const vg = document.createElement('div');
+      vg.className = 'tokenVignette';
+      t.appendChild(vg);
+    }
+
+    if(pl && pl.number && pl.number !== 'none'){
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = pl.number;
+      t.appendChild(num);
+    }
+
+    wrap.appendChild(t);
+
+    // nome: in flow, sotto il cerchio
+    const plate = document.createElement('div');
+    plate.className = 'namePlate';
+    plate.style.color = '#f8fafc';
+    const span = document.createElement('span');
+    span.className = 'nameText';
+    span.textContent = nm;
+    plate.appendChild(span);
+    wrap.appendChild(plate);
+
+    field.appendChild(wrap);
+  });
+
+  // lista
+  Object.keys(ROLE).forEach(code=>{
+    const col = (ROLE[code]?.color)||"#999";
+    const txt = idealTextColor(col);
+    const box = document.createElement('div');
+    box.className='group';
+    const hdr = document.createElement('div');
+    hdr.className='groupHdr';
+    hdr.innerHTML = "<span class='sw' style='background:"+col+"'></span><b>"+(ROLE[code]?.label||code)+"</b><span class='code' style='background:"+col+";color:"+txt+"'>"+code+"</span>";
+    box.appendChild(hdr);
+
+    const wrap = document.createElement('div');
+    wrap.style.display='flex'; wrap.style.flexWrap='wrap'; wrap.style.gap='6px'; wrap.style.marginTop='6px';
+    const items = ST.players.filter(p=>p.role===code);
+    if(!items.length){ wrap.innerHTML = "<i style='opacity:.7'>Nessun giocatore</i>"; }
+    else {
+      items.forEach(p=>{
+        const chip = document.createElement('span');
+        chip.style.cssText = "padding:4px 6px;border:1px solid #263345;border-radius:8px";
+        chip.textContent = p.name + (p.number && p.number!=='none' ? " (#"+p.number+")" : "");
+        wrap.appendChild(chip);
+      });
+    }
+    box.appendChild(wrap);
+    list.appendChild(box);
+  });
+}
+window.addEventListener('load', placeAll);
+window.addEventListener('resize', ()=>{ field.querySelectorAll('.tokenWrap').forEach(n=>n.remove()); list.innerHTML=''; placeAll(); });
+`;
+
+  return `<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${st.teamName || "Formazione"}</title>
+<style>${css}</style>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${st.logo ? `<img src='${st.logo}' style='width:100%;height:100%;object-fit:cover'>` : ""}</div>
+        <div>
+          <div style="font-weight:800">${st.teamName || ""}</div>
+          <div style="opacity:.8;font-size:12px">Allenatore: ${st.coachName || ""}</div>
+        </div>
+      </div>
+      <div class="field" id="xpitch" role="img" aria-label="Campo con formazione">
+        <svg class="gridlines" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden="true">
           <g stroke="#9fb3c8" stroke-width=".6" fill="none" opacity=".9">
-            <rect x="2.5" y="2.5" width="95" height="155" rx="2.5"/><line x1="2.5" y1="80" x2="97.5" y2="80"/><circle cx="50" cy="80" r="9"/>
-            <rect x="32" y="132" width="36" height="18"/><rect x="40" y="142" width="20" height="8"/><rect x="32" y="10" width="36" height="18"/><rect x="40" y="10" width="20" height="8"/>
-            <rect x="46.5" y="150" width="7" height="4"/><rect x="46.5" y="6" width="7" height="4"/><line x1="8" y1="30" x2="92" y2="30" opacity=".6" stroke-width=".4"/>
-            <line x1="8" y1="55" x2="92" y2="55" opacity=".6" stroke-width=".4"/><line x1="8" y1="105" x2="92" y2="105" opacity=".6" stroke-width=".4"/><line x1="8" y1="130" x2="92" y2="130" opacity=".6" stroke-width=".4"/>
+            <rect x="2.5" y="2.5" width="95" height="155" rx="2.5"/>
+            <line x1="2.5" y1="80" x2="97.5" y2="80"/><circle cx="50" cy="80" r="9"/>
+            <rect x="32" y="132" width="36" height="18"/><rect x="40" y="142" width="20" height="8"/>
+            <rect x="32" y="10" width="36" height="18"/><rect x="40" y="10" width="20" height="8"/>
+            <rect x="46.5" y="150" width="7" height="4"/><rect x="46.5" y="6" width="7" height="4"/>
+            <line x1="8" y1="30" x2="92" y2="30" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="55" x2="92" y2="55" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="105" x2="92" y2="105" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="130" x2="92" y2="130" opacity=".6" stroke-width=".4"/>
           </g>
         </svg>
-        ${form.map(pos=>{
-          const id=st.lineup[pos.id]; const pl=id?st.players.find(q=>q.id===id):null; const nm=pl?pl.name:rolesLabel[pos.role]; const cfg=rolesConfig[pos.role]; const pxy=xy(pos);
-          const from=mix(cfg.hex,0.35), to=mix(cfg.hex,-0.25), text=idealTextColor(to);
-          const ringCol=mix(cfg.hex,0.15), halo=mix(cfg.hex,0.55);
-          const number=pl&&pl.number&&pl.number!=='none'?pl.number:'';
-          const photo=pl&&pl.photo?`<img src='${pl.photo}' style='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px'><div style="position:absolute;inset:0;border-radius:999px;background:radial-gradient(120% 120% at 50% 35%, transparent 55%, rgba(0,0,0,.45) 85%);mix-blend-mode:multiply"></div>`:'';
-          let dots='';
-          const captain=pl&&pl.notes&&pl.notes.includes('[C]');
-          const yellow=pl&&pl.notes&&pl.notes.includes('[Y]');
-          const red=pl&&pl.notes&&pl.notes.includes('[R]');
-          const absent=pl&&pl.absent;
-          if(captain||yellow||red||absent){
-            dots += `<div style='position:absolute;top:-4px;left:-4px;display:flex;gap:4px'>`;
-            if(captain) dots += `<div style='width:16px;height:16px;display:grid;place-content:center;border-radius:999px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.3);box-shadow:0 1px 3px rgba(0,0,0,.45)'>C</div>`;
-            if(yellow) dots += `<div style='width:8px;height:12px;transform:rotate(6deg);background:#facc15;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.4)'></div>`;
-            if(red) dots += `<div style='width:8px;height:12px;transform:rotate(-6deg);background:#ef4444;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.4)'></div>`;
-            if(absent) dots += `<div style='width:12px;height:12px;border-radius:999px;background:#fb923c;box-shadow:0 1px 2px rgba(0,0,0,.4)'></div>`;
-            dots += `</div>`;
-          }
-          const num=number?`<div style="position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;display:grid;place-content:center;border-radius:999px;background:rgba(0,0,0,.75);color:#fff;font-weight:900;font-size:11px;border:1px solid rgba(255,255,255,.3);box-shadow:0 1px 3px rgba(0,0,0,.45);backdrop-filter:blur(2px);">${number}</div>`:'';
-          return `<div style='position:absolute;left:${pxy.x}%;top:${pxy.y}%;transform:translate(-50%,-50%);z-index:1'>
-            <div style='position:relative;display:grid;place-items:center;width:56px;height:56px'>
-              <div style='position:absolute;inset:0;border-radius:999px;box-shadow:0 0 0 3px ${ringCol},0 0 28px ${halo};filter:saturate(110%);pointer-events:none'></div>
-              <div style='position:relative;width:56px;height:56px;border-radius:999px;border:2px solid rgba(255,255,255,.1);display:grid;place-content:center;color:${text};background-image:radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(#00000022,#00000022), conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%), linear-gradient(to bottom, ${from}, ${to});box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 18px rgba(0,0,0,.35), 0 14px 32px rgba(0,0,0,.45);' aria-label='${nm}${number?`, numero ${number}`:''} – ${rolesLabel[pos.role]}'>
-                ${photo}
-                <div style="position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 35%);pointer-events:none"></div>
-                ${num}
-                ${dots}
-              </div>
-              <div style='position:absolute;left:50%;transform:translateX(-50%);top:-28px;display:flex;align-items:center;gap:4px;padding:2px 8px;font-size:10px;font-weight:800;background:rgba(9,14,22,.85);border:1px solid rgba(255,255,255,.18);color:#eef2ff;border-radius:999px;backdrop-filter:blur(4px);pointer-events:none'><span>${roleIcon(pos.role,12)}</span><span>${rolesLabel[pos.role]}</span></div>
-              <div style='pointer-events:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);padding-top:4px;width:clamp(128px,66vw,420px)'>
-                <div style='width:max-content;max-width:100%;white-space:normal;overflow:hidden;text-overflow:clip;line-height:1.05;font-weight:800;font-size:10px;text-align:center;color:#f8fafc;padding:2px 8px;border-radius:999px;background:rgba(10,14,22,.82);border:1px solid rgba(255,255,255,.14);box-shadow:0 2px 8px rgba(0,0,0,.45);backdrop-filter:blur(4px);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical' title='${nm}'>${nm}</div>
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
       </div>
     </div>
-    <div style="background:#121826;border:1px solid #273449;border-radius:14px;padding:10px">
-      <h3 style='margin:0 0 8px'>Lista giocatori</h3>
-      ${roleCodes.map(code=>{const cfg=rolesConfig[code];return `<div style='border:1px solid #273449;border-radius:10px;padding:8px;margin-bottom:8px'><div style="display:flex;align-items:center;gap:6px"><span class='badge' style='background:${cfg.color};color:${isDark(cfg.hex)?'#e5e7eb':'#0b1020'}'>${code}</span><b>${rolesLabel[code]}</b></div><div style='display:flex;flex-wrap:wrap;gap:6px;margin-top:6px'>${(st.players.filter(p=>p.role===code).map(p=>`<span style='padding:4px 6px;border:1px solid #273449;border-radius:8px'>${p.name}${p.number&&p.number!=='none'?` (#${p.number})`:''}</span>`).join('')||'<i style="opacity:.7">Nessun giocatore</i>')}</div></div>`}).join('')}
-    </div>
+    <aside class="card side">
+      <h3 style="margin:0">Lista giocatori</h3>
+      <div id="xlist"></div>
+    </aside>
   </div>
-</div></div></body></html>`;
-}
+<script>${js}<\/script>
+</body></html>`;
+};
 function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 function exportToHTML(){ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) }
 
