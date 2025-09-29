@@ -663,199 +663,184 @@ function buildShareState(){
 }
 const viewerHtmlFromState = (st) => {
   const form = FORMATIONS[st.formationKey] || [];
-  const xy = (p) => {
-    const ov = (st.posOverrides || {})[`${st.formationKey}:${p.id}`];
-    return { x: ov ? ov.x : p.x, y: ov ? ov.y : p.y };
-  };
   const roleCfg = {};
-  roleCodes.forEach(code=>{
+  roleCodes.forEach((code) => {
     const cfg = st.roleConfig?.[code] || rolesConfig[code];
-    roleCfg[code]={
+    roleCfg[code] = {
       hex: cfg.hex,
       label: st.roleNames?.[code] || cfg.defaultLabel,
-      tag: st.roleTags?.[code] || code
+      tag: st.roleTags?.[code] || code,
     };
   });
 
+  const esc = (value = "") =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const hexToRgb = (hex = "") => {
+    let h = hex.replace("#", "");
+    if (h.length === 3) h = h.split("").map((x) => x + x).join("");
+    const n = parseInt(h || "000000", 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  };
+
+  const mix = (hex, pct) => {
+    const { r, g, b } = hexToRgb(hex);
+    const t = pct >= 0 ? 255 : 0;
+    const p = Math.abs(pct);
+    const interp = (a) => Math.round(a + (t - a) * p);
+    return `#${[interp(r), interp(g), interp(b)]
+      .map((v) => v.toString(16).padStart(2, "0"))
+      .join("")}`;
+  };
+
+  const idealTextColor = (hex) => {
+    const { r, g, b } = hexToRgb(hex);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 140 ? "#0b0b0b" : "#ffffff";
+  };
+
+  const getXY = (pos) => {
+    const key = `${st.formationKey}:${pos.id}`;
+    const ov = st.posOverrides?.[key];
+    return {
+      x: ov ? ov.x : pos.x,
+      y: ov ? ov.y : pos.y,
+    };
+  };
+
+  const tokensHtml = form
+    .map((pos) => {
+      const lineupId = st.lineup?.[pos.id];
+      const player = lineupId ? st.players.find((p) => p.id === lineupId) : null;
+      const cfg = roleCfg[pos.role] || { hex: "#999999", label: pos.role, tag: pos.role };
+      const coords = getXY(pos);
+      const name = player ? player.name : cfg.tag;
+      const roleLabel = cfg.label;
+      const number = player?.number && player.number !== "none" ? player.number : "";
+      const color = cfg.hex || "#999999";
+      const from = mix(color, 0.35);
+      const to = mix(color, -0.25);
+      const ring = mix(color, 0.15);
+      const halo = mix(color, 0.55);
+      const textColor = idealTextColor(to);
+      const nameChip = `<div class="nameChip" title="${esc(name)}">${esc(name)}</div>`;
+      const roleChip = `<div class="roleIn" title="${esc(roleLabel)}">${esc(roleLabel)}</div>`;
+      const photo = player?.photo
+        ? `<img class="tokenImg" src="${player.photo}" alt="">
+           <div class="tokenVignette"></div>`
+        : "";
+      const num = number ? `<div class="num">${esc(number)}</div>` : "";
+      return `
+      <div class="tokenWrap" style="left:${coords.x}%;top:${coords.y}%;">
+        ${nameChip}
+        <div class="token" style="background-image:radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%),linear-gradient(#00000022,#00000022),conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%),linear-gradient(to bottom,${from},${to});color:${textColor};">
+          <div class="tokenRing" style="--ring:${ring};--halo:${halo};"></div>
+          ${photo}
+          ${roleChip}
+          ${num}
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  const listHtml = roleCodes
+    .map((code) => {
+      const cfg = roleCfg[code] || { hex: "#999999", label: code, tag: code };
+      const chipColor = cfg.hex || "#999999";
+      const chipText = idealTextColor(chipColor);
+      const playersByRole = (st.players || []).filter((p) => p.role === code);
+      const roster = playersByRole
+        .map((p) => {
+          const suffix = p.number && p.number !== "none" ? ` (#${esc(p.number)})` : "";
+          return `<span class="playerChip">${esc(p.name)}${suffix}</span>`;
+        })
+        .join("") || '<i class="empty">Nessun giocatore</i>';
+      return `
+      <section class="group">
+        <header class="groupHdr">
+          <span class="sw" style="background:${chipColor};"></span>
+          <b>${esc(cfg.label)}</b>
+          <span class="code" style="background:${chipColor};color:${chipText};">${esc(cfg.tag)}</span>
+        </header>
+        <div class="groupBody">${roster}</div>
+      </section>`;
+    })
+    .join("");
+
   const css = `
-:root{ --ink:#0b0b0b; --paper:#ffffff; }
-*{ box-sizing:border-box }
-body{ margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; background:#0a0f1a; color:#e6edf3 }
-.wrap{ max-width:1200px; margin:0 auto; padding:12px; display:grid; gap:12px; grid-template-columns:minmax(0,2fr) 380px; }
-.card{ border:1px solid #263345; border-radius:14px; background:#121826; padding:10px; }
-.field{ position:relative; width:100%; aspect-ratio:9/16; border:1px solid #263345; border-radius:18px; background:linear-gradient(180deg,#166534,#064e3b); overflow:hidden; }
-.gridlines{ position:absolute; inset:0; width:100%; height:100%; }
-.tokenWrap{ position:absolute; left:0; top:0; transform:translate(var(--x), var(--y)); /* --x/y in px via JS */ text-align:center; z-index:1; }
-.token{ position:relative; display:block; width:56px; height:56px; margin:0 auto; border-radius:999px; border:3px solid transparent;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -10px 18px rgba(0,0,0,.35), 0 14px 32px rgba(0,0,0,.45); overflow:hidden; }
-.tokenRing{ position:absolute; inset:-3px; border-radius:999px; box-shadow:0 0 0 3px var(--ring), 0 0 24px var(--halo); pointer-events:none; }
-.tokenImg{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:999px; }
-.tokenVignette{ position:absolute; inset:0; border-radius:999px; background:radial-gradient(120% 120% at 50% 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.38) 85%); mix-blend-mode:multiply; }
-.roleIn{ position:absolute; left:50%; bottom:6%; transform:translateX(-50%); max-width:88%; padding:2px 8px; border-radius:999px;
-         border:1px solid rgba(255,255,255,.16); background:rgba(10,14,22,.78); color:#f8fafc; font-weight:800; line-height:1.05;
-         box-shadow:0 0 0 1px rgba(0,0,0,.25) inset, 0 2px 6px rgba(0,0,0,.35);
-         font-size:12px; pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.num{ position:absolute; right:-6px; bottom:-6px; min-width:20px; height:20px; border-radius:999px; background:#0b1220; color:#e5e7eb; font-weight:900; font-size:11px; border:2px solid #334155; display:grid; place-content:center; z-index:3; }
-.nameChip{ display:inline-block; margin-bottom:6px; padding:3px 8px; border-radius:999px; border:1px solid #334155; background:rgba(9,14,22,.92); color:#eef2ff; backdrop-filter:blur(4px); font:700 12px/1.05 system-ui; white-space:nowrap; }
-.side{ display:flex; flex-direction:column; gap:8px; }
-.group{ border:1px solid #263345; border-radius:10px; padding:8px; }
-.groupHdr{ display:flex; align-items:center; gap:8px; }
-.sw{ width:12px; height:12px; border-radius:999px; display:inline-block; }
-.code{ margin-left:auto; font:800 12px/1 system-ui; padding:2px 8px; border-radius:999px; }
-@media (max-width:980px){ .wrap{ grid-template-columns:1fr; } }
-@media print{ body{ background:#fff; color:#000 } .card{ background:#fff; border-color:#ccc } .field{ border-color:#ccc } }
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:#0a0f1a;color:#e6edf3}
+.wrap{max-width:1200px;margin:0 auto;padding:12px;display:grid;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,360px)}
+.card{border:1px solid #263345;border-radius:14px;background:#121826;padding:10px;box-shadow:0 6px 30px rgba(0,0,0,.25)}
+.field{position:relative;width:100%;aspect-ratio:9/16;border:1px solid #263345;border-radius:18px;background:linear-gradient(180deg,#166534,#064e3b);overflow:hidden;--tok:clamp(52px,9vw,86px)}
+.gridlines{position:absolute;inset:0;width:100%;height:100%}
+.tokenWrap{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--tok);z-index:1}
+.token{position:relative;width:var(--tok);height:var(--tok);border-radius:999px;border:3px solid transparent;display:grid;place-content:center;font-weight:900;color:#e5e7eb;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -10px 18px rgba(0,0,0,.35),0 14px 32px rgba(0,0,0,.45);overflow:hidden}
+.tokenRing{position:absolute;inset:-3px;border-radius:999px;box-shadow:0 0 0 3px var(--ring),0 0 24px var(--halo);pointer-events:none}
+.tokenImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px}
+.tokenVignette{position:absolute;inset:0;border-radius:999px;background:radial-gradient(120% 120% at 50% 30%,rgba(0,0,0,0) 55%,rgba(0,0,0,.38) 85%);mix-blend-mode:multiply}
+.roleIn{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);max-width:88%;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(10,14,22,.78);color:#f8fafc;font-weight:800;line-height:1.05;box-shadow:0 0 0 1px rgba(0,0,0,.25) inset,0 2px 6px rgba(0,0,0,.35);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;border-radius:999px;background:#0b1220;color:#e5e7eb;font-weight:900;font-size:11px;border:2px solid #334155;display:grid;place-content:center;z-index:3}
+.nameChip{display:inline-block;margin-bottom:4px;padding:3px 8px;border-radius:999px;border:1px solid #334155;background:rgba(9,14,22,.92);color:#eef2ff;font:700 12px/1.05 system-ui;max-width:min(60vw,420px);backdrop-filter:blur(4px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side{display:flex;flex-direction:column;gap:8px}
+.group{border:1px solid #263345;border-radius:10px;padding:8px}
+.groupHdr{display:flex;align-items:center;gap:8px}
+.groupBody{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.playerChip{padding:4px 6px;border:1px solid #263345;border-radius:8px}
+.sw{width:12px;height:12px;border-radius:999px;display:inline-block}
+.code{margin-left:auto;font:800 12px/1 system-ui;padding:2px 8px;border-radius:999px}
+.empty{opacity:.7}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+@media(max-width:640px){body{font-size:15px}.wrap{gap:10px}.field{--tok:clamp(48px,12vw,78px)}}
+@media print{body{background:#fff;color:#000}.card{background:#fff;border-color:#ccc;box-shadow:none}.field{border-color:#ccc}.nameChip{background:#f1f5f9;color:#0b0b0b}.roleIn{background:#0f172a;color:#fff}}
 `;
 
-  const js = `
-function hexToRgb(hex){ let h=(hex||"").replace("#",""); if(h.length===3) h=h.split("").map(x=>x+x).join(""); const n=parseInt(h||"000000",16); return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 }; }
-function mix(hex,pct){ const {r,g,b}=hexToRgb(hex); const t=pct>=0?255:0; const p=Math.abs(pct); const H=(a)=>Math.round(a+(t-a)*p); return "#"+[H(r),H(g),H(b)].map(v=>v.toString(16).padStart(2,"0")).join(""); }
-function idealTextColor(hex){ const {r,g,b}=hexToRgb(hex); const yiq=(r*299+g*587+b*114)/1000; return yiq>=140?"#0b0b0b":"#ffffff"; }
-const ST = ${JSON.stringify(st)};
-const ROLE = ${JSON.stringify(roleCfg)};
-
-const field = document.getElementById('xpitch');
-const list  = document.getElementById('xlist');
-
-// calcolo px assoluti dal % per posizionare il wrapper
-function placeAll(){
-  const r = field.getBoundingClientRect();
-  const W = r.width, H = r.height;
-  const F = ${JSON.stringify(form)};
-  field.innerHTML += ""; // noop per forzare reflow su alcuni browser
-  // crea token
-  F.forEach(pos=>{
-    const id = ST.lineup[pos.id];
-    const pl = id ? ST.players.find(q=>q.id===id) : null;
-    const roleLabel = (ROLE[pos.role]?.label || pos.role);
-    const tag = (ROLE[pos.role]?.tag || pos.role);
-    const name = pl ? pl.name : tag;
-      const col = (ROLE[pos.role]?.hex)||"#999";
-    const from = mix(col, +0.35), to = mix(col, -0.25);
-    const ring = mix(col, +0.15), halo = mix(col, +0.55);
-
-    const wrap = document.createElement('div');
-    wrap.className = 'tokenWrap';
-      // convertiamo % -> px; centriamo il token (56px) usando translate(-50%,-50%) in px
-      const ov = ST.posOverrides ? ST.posOverrides[\`\${ST.formationKey}:\${pos.id}\`] : null;
-    const xPerc = ov ? ov.x : pos.x;
-    const yPerc = ov ? ov.y : pos.y;
-    const x = xPerc/100*W;
-    const y = yPerc/100*H;
-    wrap.style.setProperty('--x', (x - 0.5*56) + 'px');
-    wrap.style.setProperty('--y', (y - 0.5*56) + 'px');
-
-    // chip nome (sopra)
-    const nameChip = document.createElement('div');
-    nameChip.className = 'nameChip';
-    nameChip.textContent = name;
-    wrap.appendChild(nameChip);
-
-    // cerchio
-    const t = document.createElement('div');
-    t.className = 'token';
-    t.style.backgroundImage = 'radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%),'+
-                              'linear-gradient(#00000022,#00000022),'+
-                              'conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%),'+
-                              'linear-gradient(to bottom,'+from+','+to+')';
-
-    const ringEl = document.createElement('div');
-    ringEl.className = 'tokenRing';
-    ringEl.style.setProperty('--ring', ring);
-    ringEl.style.setProperty('--halo', halo);
-    t.appendChild(ringEl);
-
-    if(pl && pl.photo){
-      const img = document.createElement('img');
-      img.className = 'tokenImg'; img.src = pl.photo; img.alt = '';
-      t.appendChild(img);
-      const vg = document.createElement('div');
-      vg.className = 'tokenVignette';
-      t.appendChild(vg);
-    }
-
-    const roleEl = document.createElement('div');
-    roleEl.className = 'roleIn';
-    roleEl.textContent = roleLabel;
-    t.appendChild(roleEl);
-
-    if(pl && pl.number && pl.number !== 'none'){
-      const num = document.createElement('div');
-      num.className = 'num';
-      num.textContent = pl.number;
-      t.appendChild(num);
-    }
-
-    wrap.appendChild(t);
-
-    field.appendChild(wrap);
-  });
-
-  // lista
-  Object.keys(ROLE).forEach(code=>{
-    const col = (ROLE[code]?.hex)||"#999";
-    const txt = idealTextColor(col);
-    const box = document.createElement('div');
-    box.className='group';
-    const hdr = document.createElement('div');
-    hdr.className='groupHdr';
-    hdr.innerHTML = "<span class='sw' style='background:"+col+"'></span><b>"+(ROLE[code]?.label||code)+"</b><span class='code' style='background:"+col+";color:"+txt+"'>"+(ROLE[code]?.tag||code)+"</span>";
-    box.appendChild(hdr);
-
-    const wrap = document.createElement('div');
-    wrap.style.display='flex'; wrap.style.flexWrap='wrap'; wrap.style.gap='6px'; wrap.style.marginTop='6px';
-    const items = ST.players.filter(p=>p.role===code);
-    if(!items.length){ wrap.innerHTML = "<i style='opacity:.7'>Nessun giocatore</i>"; }
-    else {
-      items.forEach(p=>{
-        const chip = document.createElement('span');
-        chip.style.cssText = "padding:4px 6px;border:1px solid #263345;border-radius:8px";
-        chip.textContent = p.name + (p.number && p.number!=='none' ? " (#"+p.number+")" : "");
-        wrap.appendChild(chip);
-      });
-    }
-    box.appendChild(wrap);
-    list.appendChild(box);
-  });
-}
-window.addEventListener('load', placeAll);
-window.addEventListener('resize', ()=>{ field.querySelectorAll('.tokenWrap').forEach(n=>n.remove()); list.innerHTML=''; placeAll(); });
-`;
-
-  return `<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${st.teamName || "Formazione"}</title>
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${esc(st.teamName || "Formazione")}</title>
 <style>${css}</style>
-<body>
+</head><body>
   <div class="wrap">
-    <div class="card">
+    <section class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${st.logo ? `<img src='${st.logo}' style='width:100%;height:100%;object-fit:cover'>` : ""}</div>
+        <div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${
+          st.logo ? `<img src="${st.logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover"/>` : ""
+        }</div>
         <div>
-          <div style="font-weight:800">${st.teamName || ""}</div>
-          <div style="opacity:.8;font-size:12px">Allenatore: ${st.coachName || ""}</div>
+          <div style="font-weight:800">${esc(st.teamName || "")}</div>
+          <div style="opacity:.8;font-size:12px">Allenatore: ${esc(st.coachName || "")}</div>
         </div>
       </div>
-      <div class="field" id="xpitch" role="img" aria-label="Campo con formazione">
+      <div class="field" role="img" aria-label="Campo con formazione">
         <svg class="gridlines" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden="true">
           <g stroke="#9fb3c8" stroke-width=".6" fill="none" opacity=".9">
             <rect x="2.5" y="2.5" width="95" height="155" rx="2.5"/>
-            <line x1="2.5" y1="80" x2="97.5" y2="80"/><circle cx="50" cy="80" r="9"/>
-            <rect x="32" y="132" width="36" height="18"/><rect x="40" y="142" width="20" height="8"/>
-            <rect x="32" y="10" width="36" height="18"/><rect x="40" y="10" width="20" height="8"/>
-            <rect x="46.5" y="150" width="7" height="4"/><rect x="46.5" y="6" width="7" height="4"/>
+            <line x1="2.5" y1="80" x2="97.5" y2="80"/>
+            <circle cx="50" cy="80" r="9"/>
+            <rect x="32" y="132" width="36" height="18"/>
+            <rect x="40" y="142" width="20" height="8"/>
+            <rect x="32" y="10" width="36" height="18"/>
+            <rect x="40" y="10" width="20" height="8"/>
+            <rect x="46.5" y="150" width="7" height="4"/>
+            <rect x="46.5" y="6" width="7" height="4"/>
             <line x1="8" y1="30" x2="92" y2="30" opacity=".6" stroke-width=".4"/>
             <line x1="8" y1="55" x2="92" y2="55" opacity=".6" stroke-width=".4"/>
             <line x1="8" y1="105" x2="92" y2="105" opacity=".6" stroke-width=".4"/>
             <line x1="8" y1="130" x2="92" y2="130" opacity=".6" stroke-width=".4"/>
           </g>
         </svg>
+        ${tokensHtml}
       </div>
-    </div>
+    </section>
     <aside class="card side">
       <h3 style="margin:0">Lista giocatori</h3>
-      <div id="xlist"></div>
+      ${listHtml}
     </aside>
   </div>
-<script>${js}<\/script>
 </body></html>`;
 };
 function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
