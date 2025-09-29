@@ -1,0 +1,1023 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FIFA Lineup Manager — Offline (Pop)</title>
+<style>
+:root{
+  --bg:#0a0f1a;--fg:#e6edf3;--card:#121826;--mut:#0f1624;--br:#273449;--ink:#1d2a3f;--pri:#4f8cff;--line:#9fb3c8;
+  --tok-min:46px;--tok-max:92px;
+  /* ruolo → colore */
+  --role-GK:#fbbf24;
+  --role-DF:#60a5fa;
+  --role-MF:#86efac;
+  --role-FW:#f0abfc;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Arial;background:linear-gradient(180deg,#0a0f1a,#090d16);color:var(--fg)}
+.container{max-width:1280px;margin:0 auto;padding:12px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
+.left,.right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid var(--br);background:#0f1624}
+.logo img{width:100%;height:100%;object-fit:cover}
+.title{font-weight:800;cursor:pointer}
+.sub{font-size:12px;opacity:.8}
+.btn{appearance:none;border:1px solid var(--br);background:#1d2a3f;color:var(--fg);padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--pri);color:#0b1020;border-color:transparent}
+.input,.select,.textarea{background:#0f1624;color:var(--fg);border:1px solid var(--br);padding:8px 10px;border-radius:10px;font:inherit}
+.textarea{min-height:90px;resize:vertical}
+.cols{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:900px){.cols{grid-template-columns:minmax(0,2fr) 380px}}
+.card{background:var(--card);border:1px solid var(--br);border-radius:14px;box-shadow:0 6px 30px rgba(0,0,0,.25)}
+.pad{padding:10px}
+
+/* CAMPO */
+.field{position:relative;width:100%;aspect-ratio:9/16;border-radius:18px;overflow:hidden;border:1px solid var(--br);background:linear-gradient(180deg,#166534,#064e3b)}
+.field svg{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+
+/* SLOT + TOKEN */
+.slot{position:absolute;transform:translate(-50%,-50%);z-index:1}
+.role-badge{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  top:calc(var(--tok)*-0.55);
+  padding:4px 8px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.05;
+  border-radius:999px;
+  backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(9,14,22,.92);
+  color:#eef2ff;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.token-wrap{position:relative;display:grid;place-items:center;width:var(--tok);height:var(--tok)}
+.token{
+  --tok:56px;
+  position:relative;
+  width:var(--tok);
+  height:var(--tok);
+  border-radius:999px;
+  display:grid;
+  place-content:center;
+  font-weight:900;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  border:3px solid transparent;
+  transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  outline:none;
+  box-shadow:0 14px 38px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.25) inset;
+  background:linear-gradient(#1113,#1113) padding-box,
+             conic-gradient(#fff0 0 25%,#fff3 0 50%,#fff0 0 75%,#fff3 0 100%) border-box,
+             var(--tok-grad,linear-gradient(180deg,#475569,#334155)) border-box;
+}
+.token::before{
+  content:"";
+  position:absolute;
+  inset:3px;
+  border-radius:999px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.06), inset 0 12px 22px rgba(0,0,0,.35);
+  pointer-events:none;
+}
+.token::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  opacity:0;
+  background:linear-gradient(225deg,rgba(255,255,255,.18),rgba(255,255,255,0) 40%);
+  transition:opacity .12s ease;
+  pointer-events:none;
+}
+.token:hover{transform:scale(1.06);}
+.token:hover::after{opacity:.5;}
+
+/* foto */
+.token img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px;z-index:0}
+.role-in{
+  position:absolute;
+  left:50%;
+  bottom:6%;
+  transform:translateX(-50%);
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(10,14,22,.78);
+  color:#f8fafc;
+  font-weight:800;
+  font-size:calc(var(--tok)*.20);
+  max-width:calc(var(--tok)*.9);
+  line-height:1.05;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25) inset, 0 2px 6px rgba(0,0,0,.35);
+  pointer-events:none;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* numero maglia */
+.num{
+  position:absolute; right:calc(var(--tok)*-.10); bottom:calc(var(--tok)*-.10);
+  min-width:calc(var(--tok)*.36); height:calc(var(--tok)*.36);
+  display:grid; place-content:center; border-radius:999px;
+  background:rgba(0,0,0,.75); color:#fff; font-weight:900; font-size:calc(var(--tok)*.20);
+  border:1px solid rgba(255,255,255,.3); box-shadow:0 1px 3px rgba(0,0,0,.45);
+  backdrop-filter:blur(2px); z-index:3;
+}
+
+/* LISTE */
+.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;background:#0b1220;color:#e2e8f0;margin-bottom:4px}
+.list .group{border:1px solid var(--br);border-radius:12px;padding:10px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--br);border-radius:10px;padding:8px}
+.row+.row{margin-top:8px}
+.av{width:28px;height:28px;border-radius:8px;overflow:hidden;border:1px solid var(--br);background:#253046}
+
+/* MODAL + MENU + TOAST */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:50;padding:12px}
+.modal.open{display:flex}
+.panel{width:min(720px,95vw);max-height:90vh;overflow:auto;background:var(--card);border:1px solid var(--br);border-radius:14px;padding:12px}
+.menu-pop{position:fixed;min-width:240px;max-width:320px;max-height:280px;overflow:auto;background:var(--card);border:1px solid var(--br);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:6px;z-index:70}
+.menu-item{display:flex;gap:8px;align-items:center;padding:8px;border-radius:10px;cursor:pointer}
+.menu-item:hover{background:#1d2a3f}
+.menu-head{font-weight:800;padding:6px 8px;opacity:.9}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;background:#0b1220;color:#e5e7eb;border:1px solid #273449;padding:8px 12px;border-radius:10px;font-size:12px;display:none;z-index:90}
+.toast.show{display:block}
+.switch{display:inline-flex;align-items:center;gap:6px}
+@keyframes token-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+/* Touch helpers */
+.field.unlocked{touch-action:none}
+body.no-scroll{overflow:hidden}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="toolbar">
+    <div class="left">
+      <div class="logo" id="logoBox"></div>
+      <div>
+        <div class="title" id="teamName">FC Champions</div>
+        <div class="sub" id="coach">Allenatore: Marco Rossi</div>
+      </div>
+    </div>
+    <div class="right">
+      <label class="btn">Logo<input id="logoInput" type="file" accept="image/*" style="display:none"></label>
+      <button class="btn" id="editInfo">Modifica</button>
+      <button class="btn" id="editRoles">Ruoli</button>
+      <button class="btn" id="share">Condividi</button>
+      <button class="btn" id="lock">Sblocca movimento</button>
+      <label class="switch"><input id="snap" type="checkbox" checked>Snap</label>
+      <label class="switch"><input id="anticoll" type="checkbox" checked>Anti-collisione</label>
+      <button class="btn" id="reset">Reset pos</button>
+      <button class="btn primary" id="downloadHtml">Scarica HTML</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="card pad">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="opacity:.8">Formazione</span>
+          <select id="formation" class="select"><option>4-2-1-3</option><option>4-3-3</option><option>4-4-2</option></select>
+        </div>
+        <button class="btn" id="add">Aggiungi giocatore</button>
+      </div>
+      <div class="field" id="field">
+        <svg viewBox="0 0 100 160" preserveAspectRatio="none">
+          <g stroke="var(--line)" stroke-width=".6" fill="none" opacity=".9">
+            <rect x="2.5" y="2.5" width="95" height="155" rx="2.5"/>
+            <line x1="2.5" y1="80" x2="97.5" y2="80"/>
+            <circle cx="50" cy="80" r="9"/>
+            <rect x="32" y="132" width="36" height="18"/>
+            <rect x="40" y="142" width="20" height="8"/>
+            <rect x="32" y="10" width="36" height="18"/>
+            <rect x="40" y="10" width="20" height="8"/>
+            <rect x="46.5" y="150" width="7" height="4"/>
+            <rect x="46.5" y="6" width="7" height="4"/>
+            <line x1="8" y1="30" x2="92" y2="30" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="55" x2="92" y2="55" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="105" x2="92" y2="105" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="130" x2="92" y2="130" opacity=".6" stroke-width=".4"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" class="input" placeholder="Cerca giocatore">
+      </div>
+  <div id="list" class="list" style="max-height:60vh;overflow:auto"></div>
+    </div>
+  </div>
+</div>
+
+<input id="jsonInput" type="file" accept="application/json" style="display:none">
+
+<!-- Modals -->
+<div class="modal" id="infoM"><div class="panel">
+  <h3 style="margin:0 0 8px">Info squadra</h3>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div><label style="font-size:12px">Nome squadra</label><input id="tNameI" class="input" placeholder="Inserisci nome"></div>
+    <div><label style="font-size:12px">Allenatore</label><input id="coachI" class="input" placeholder="Nome allenatore"></div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn" data-close="#infoM">Chiudi</button></div>
+</div></div>
+
+<div class="modal" id="rolesM"><div class="panel">
+  <h3 style="margin:0 0 8px">Etichette ruoli</h3>
+  <div id="rolesEditBox" style="display:grid;grid-template-columns:1fr;gap:8px"></div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+    <button class="btn" data-close="#rolesM">Annulla</button>
+    <button class="btn primary" id="rolesSave">Salva</button>
+  </div>
+</div></div>
+
+<div class="modal" id="roleLabelM"><div class="panel">
+  <h3 style="margin:0 0 8px">Etichetta ruolo</h3>
+  <div style="display:grid;gap:8px">
+    <input id="roleTagInput" class="input" placeholder="Tag">
+    <input id="roleLabelInput" class="input" placeholder="Nome ruolo">
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+    <button class="btn" data-close="#roleLabelM">Annulla</button>
+    <button class="btn primary" id="roleLabelSave">Salva</button>
+  </div>
+</div></div>
+
+<div class="modal" id="playerM"><div class="panel">
+  <h3 id="pTitle" style="margin:0 0 8px">Nuovo Giocatore</h3>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div>
+      <label style="font-size:12px">Nome</label><input id="pName" class="input" placeholder="Nome e cognome">
+      <label style="font-size:12px;margin-top:8px;display:block">Ruolo</label><select id="pRole" class="select"></select>
+      <label style="font-size:12px;margin-top:8px;display:block">Numero</label><select id="pNum" class="select"></select>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="pAbs"><label for="pAbs" style="font-size:12px">Assente</label></div>
+    </div>
+    <div>
+      <label style="font-size:12px">Foto</label>
+      <div style="display:flex;gap:8px;align-items:center"><input id="pPhoto" type="file" accept="image/*" class="input"><button class="btn" id="pDelPhoto">Rimuovi</button></div>
+      <div id="pPrev" style="margin-top:8px;width:110px;height:110px;border:1px solid var(--br);border-radius:12px;display:grid;place-content:center;opacity:.7;overflow:hidden"></div>
+      <label style="font-size:12px;display:block;margin-top:8px">Note</label><textarea id="pNotes" class="textarea" placeholder="Note"></textarea>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;gap:8px;margin-top:10px">
+    <button class="btn" id="pRemove" style="display:none">Elimina</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn" data-close="#playerM">Annulla</button>
+      <button class="btn primary" id="pSave">Salva</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="modal" id="shareM"><div class="panel">
+  <h3 style="margin:0 0 8px">Condividi formazione</h3>
+  <div class="grid" style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px">
+    <input id="shareInfo" class="input" readonly value="Scarica un HTML auto-contenuto (offline)">
+    <button class="btn primary" id="dlHtml">Scarica HTML</button>
+  </div>
+  <div style="margin-top:12px;display:grid;gap:6px">
+    <div style="font-size:12px;opacity:.8">Scambia dati (JSON)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn" id="exportJson">Esporta JSON</button>
+      <button class="btn" id="importJsonReplace">Importa JSON (sostituisci)</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn" id="importJsonMerge">Importa JSON (unisci)</button>
+      <button class="btn" id="importJsonClipboard">Incolla da Appunti</button>
+    </div>
+    <p style="font-size:12px;opacity:.7">
+      • <b>Sostituisci</b>: rimpiazza completamente i dati.<br>
+      • <b>Unisci</b>: aggiunge/aggiorna giocatori e lineup senza perdere i tuoi.
+    </p>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px"><button class="btn" data-close="#shareM">Chiudi</button></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== ROLES & FORMATIONS ===== */
+const rolesConfig={
+  POR:{group:'GK',defaultLabel:'Portiere',color:'var(--role-GK)',hex:'#fbbf24',icon:'🧤'},
+  DC:{group:'DF',defaultLabel:'Difensore Centrale',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  TS:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  TD:{group:'DF',defaultLabel:'Terzino',color:'var(--role-DF)',hex:'#60a5fa',icon:'🛡️'},
+  CDS:{group:'MF',defaultLabel:'Centrocampista Difensivo',color:'var(--role-MF)',hex:'#86efac',icon:'⚙️'},
+  COC:{group:'MF',defaultLabel:'Centrocampista Offensivo',color:'var(--role-MF)',hex:'#86efac',icon:'⚙️'},
+  AS:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'},
+  ATT:{group:'FW',defaultLabel:'Attaccante',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'},
+  AD:{group:'FW',defaultLabel:'Ala',color:'var(--role-FW)',hex:'#f0abfc',icon:'🎯'}
+};
+const roleCodes=Object.keys(rolesConfig);
+const SCHEMA_VERSION = 1;
+const nowIso = () => new Date().toISOString();
+const FORMATIONS={
+  '4-2-1-3':[ {id:'ATT',role:'ATT',x:50,y:14},{id:'AS',role:'AS',x:25,y:22},{id:'AD',role:'AD',x:75,y:22},
+              {id:'COC',role:'COC',x:50,y:36},{id:'CDS_L',role:'CDS',x:40,y:52},{id:'CDS_R',role:'CDS',x:60,y:52},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
+              {id:'POR',role:'POR',x:50,y:92} ],
+  '4-3-3':[   {id:'ATT',role:'ATT',x:50,y:16},{id:'AS',role:'AS',x:24,y:24},{id:'AD',role:'AD',x:76,y:24},
+              {id:'COC',role:'COC',x:38,y:46},{id:'CDS_L',role:'CDS',x:50,y:56},{id:'CDS_R',role:'CDS',x:62,y:46},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
+              {id:'POR',role:'POR',x:50,y:92} ],
+  '4-4-2':[   {id:'ATT1',role:'ATT',x:43,y:18},{id:'ATT2',role:'ATT',x:57,y:18},
+              {id:'AS',role:'AS',x:22,y:46},{id:'CDS_L',role:'CDS',x:45,y:52},
+              {id:'CDS_R',role:'CDS',x:55,y:52},{id:'AD',role:'AD',x:78,y:46},
+              {id:'TS',role:'TS',x:18,y:78},{id:'DC1',role:'DC',x:42,y:78},{id:'DC2',role:'DC',x:58,y:78},{id:'TD',role:'TD',x:82,y:78},
+              {id:'POR',role:'POR',x:50,y:92} ]
+};
+function roleLabel(code){return Storage.get('roleName_'+code, rolesConfig[code].defaultLabel)}
+function setRoleLabel(code,label){
+  Storage.set('roleName_'+code,label);
+  saveStateToServer();
+}
+function roleTag(code){return Storage.get('roleTag_'+code, code)}
+function setRoleTag(code,tag){
+  Storage.set('roleTag_'+code,tag);
+  saveStateToServer();
+}
+
+/* ===== STORAGE WRAPPER ===== */
+const Mem={};
+const Storage={
+  get:(k,def)=>{try{const s=localStorage.getItem(k);return s?JSON.parse(s):def}catch(_){try{const t=sessionStorage.getItem(k);return t?JSON.parse(t):Mem[k]??def}catch(_){return Mem[k]??def}}},
+  set:(k,v)=>{const s=JSON.stringify(v);try{ if(s.length>4_500_000) throw new Error('too_large'); localStorage.setItem(k,s); return true; }
+              catch(_){ try{sessionStorage.setItem(k,s)}catch(_){} Mem[k]=v; notify("Spazio locale insufficiente: salvato in sessione."); return false; } }
+};
+
+Object.assign(rolesConfig, Storage.get('roleConfig', rolesConfig));
+
+/* ===== STATE ===== */
+let formationKey=Storage.get('formationKey','4-2-1-3');
+let players=Storage.get('players',[]);
+let lineup=Storage.get('lineup',{});
+let teamName=Storage.get('teamName','FC Champions');
+let coachName=Storage.get('coachName','Marco Rossi');
+let logo=Storage.get('logo','');
+let posOverrides=Storage.get('posOverrides',{});
+let moveLocked=Storage.get('moveLocked',true);
+let snap=Storage.get('snap',true);
+let anticoll=Storage.get('anticoll',true);
+let __editing=null, __pendingPos=null, __roleEditing=null;
+
+async function loadStateFromServer(){
+  try{
+    const res = await fetch('/api/state');
+    if(!res.ok) return;
+    const st = await res.json();
+    formationKey = st.formationKey || formationKey;
+    players = st.players || players;
+    lineup = st.lineup || lineup;
+    teamName = st.teamName !== undefined ? st.teamName : teamName;
+    coachName = st.coachName !== undefined ? st.coachName : coachName;
+    logo = st.logo || logo;
+    posOverrides = st.posOverrides || posOverrides;
+    if(st.roleNames) Object.entries(st.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+    if(st.roleTags) Object.entries(st.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+    Storage.set('formationKey',formationKey);
+    Storage.set('players',players);
+    Storage.set('lineup',lineup);
+    Storage.set('teamName',teamName);
+    Storage.set('coachName',coachName);
+    Storage.set('logo',logo);
+    Storage.set('posOverrides',posOverrides);
+    renderAll();
+  }catch(e){console.warn('backend load failed',e);}
+}
+
+function saveStateToServer(){
+  fetch('/api/state',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(buildShareState())
+  }).catch(e=>console.warn('backend save failed',e));
+}
+
+/* Seed 11 giocatori se primo avvio */
+if(players.length===0){
+  const mk=(n,r,num)=>({id:crypto.randomUUID(),name:n,role:r,number:String(num),photo:'',absent:false,notes:'',createdAt:Date.now()});
+  players=[mk('G. Doni','POR',1),mk('L. Bianchi','DC',4),mk('A. Neri','DC',5),mk('M. Verdi','TS',3),mk('S. Rossi','TD',2),
+           mk('P. Gallo','CDS',6),mk('D. Bruni','CDS',8),mk('N. Corsi','COC',10),mk('F. Mancini','AS',11),mk('R. Serra','AD',7),mk('E. Vitale','ATT',9)];
+  lineup={ATT:players.find(p=>p.role==='ATT').id, AS:players.find(p=>p.role==='AS').id, AD:players.find(p=>p.role==='AD').id,
+          COC:players.find(p=>p.role==='COC').id, CDS_L:players.filter(p=>p.role==='CDS')[0].id, CDS_R:players.filter(p=>p.role==='CDS')[1].id,
+          TS:players.find(p=>p.role==='TS').id, DC1:players.filter(p=>p.role==='DC')[0].id, DC2:players.filter(p=>p.role==='DC')[1].id,
+          TD:players.find(p=>p.role==='TD').id, POR:players.find(p=>p.role==='POR').id };
+  Storage.set('players',players); Storage.set('lineup',lineup);
+  saveStateToServer();
+}
+
+/* ===== UTILS ===== */
+const byId=(id)=>document.getElementById(id);
+function notify(msg){const t=byId('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); clearTimeout(notify._t); notify._t=setTimeout(()=>t.classList.remove('show'),2200)}
+function fileToDataUrlResized(file,maxSide=640,quality=0.85){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>{ const img=new Image(); img.onload=()=>{
+        const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+        const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        try{ resolve(c.toDataURL('image/jpeg',quality)) } catch(_){ resolve(r.result) }
+      }; img.onerror=reject; img.src=r.result };
+    r.onerror=reject; r.readAsDataURL(file);
+  });
+}
+function updateTok(){const f=byId('field'); if(!f) return; const r=f.getBoundingClientRect(); const s=Math.max(60,Math.min(110,Math.round(Math.min(r.width,r.height)*.1))); f.style.setProperty('--tok',s+'px')}
+function oKey(f,p){return `${f}:${p}`}
+function getXY(f,pos){const ov=posOverrides[oKey(f,pos.id)]; return {x:ov?ov.x:pos.x, y:ov?ov.y:pos.y}}
+function isDark(hex){const c=hex.replace('#','');const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);return(0.299*r+0.587*g+0.114*b)/255<0.5}
+function mix(hex,amt){const c=hex.replace('#','');let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);if(amt>0){r=Math.round(r+(255-r)*amt);g=Math.round(g+(255-g)*amt);b=Math.round(b+(255-b)*amt);}else{const p=-amt;r=Math.round(r*(1-p));g=Math.round(g*(1-p));b=Math.round(b*(1-p));}return`rgb(${r},${g},${b})`}
+function idealTextColor(hex){return isDark(hex)?'#e5e7eb':'#0b1020'}
+// Auto-fit del nome dentro alla ribbon (max 2 righe)
+function statusDots(tok,{captain,yellow,red,absent}){if(!captain&&!yellow&&!red&&!absent) return null;const size=Math.max(12,tok*0.18);const wrap=document.createElement('div');wrap.style.position='absolute';wrap.style.top='-4px';wrap.style.left='-4px';wrap.style.display='flex';wrap.style.gap='4px';if(captain){const c=document.createElement('div');c.textContent='C';c.style.width=size+4+'px';c.style.height=size+4+'px';c.style.display='grid';c.style.placeContent='center';c.style.borderRadius='999px';c.style.background='rgba(0,0,0,.7)';c.style.color='#fff';c.style.fontSize='10px';c.style.fontWeight='900';c.style.border='1px solid rgba(255,255,255,.3)';c.style.boxShadow='0 1px 3px rgba(0,0,0,.45)';wrap.appendChild(c);}if(yellow){const y=document.createElement('div');y.style.width='8px';y.style.height='12px';y.style.transform='rotate(6deg)';y.style.background='#facc15';y.style.borderRadius='2px';y.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(y);}if(red){const r=document.createElement('div');r.style.width='8px';r.style.height='12px';r.style.transform='rotate(-6deg)';r.style.background='#ef4444';r.style.borderRadius='2px';r.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(r);}if(absent){const a=document.createElement('div');a.style.width='12px';a.style.height='12px';a.style.borderRadius='999px';a.style.background='#fb923c';a.style.animation='token-pulse 1s ease-in-out infinite';a.style.boxShadow='0 1px 2px rgba(0,0,0,.4)';wrap.appendChild(a);}return wrap}
+
+function syncFieldTouch(){ const fld=byId('field'); if(!fld) return; fld.classList.toggle('unlocked', !moveLocked); }
+/* ===== RENDER ===== */
+function renderHeader(){
+  byId('teamName').textContent=teamName;
+  byId('coach').textContent='Allenatore: '+(coachName||'—');
+  byId('logoBox').innerHTML=logo?`<img src="${logo}" alt="logo">`:'';
+  byId('lock').textContent=moveLocked?'Sblocca movimento':'Blocca movimento';
+  byId('snap').checked=!!snap; byId('anticoll').checked=!!anticoll;
+  syncFieldTouch();
+}
+function renderField(){
+  const f=byId('field'); f.querySelectorAll('.slot').forEach(n=>n.remove()); updateTok();
+  const tok=parseFloat(getComputedStyle(f).getPropertyValue('--tok'))||56;
+  (FORMATIONS[formationKey]||[]).forEach(pos=>{
+    const slot=document.createElement('div'); slot.className='slot';
+    const xy=getXY(formationKey,pos); slot.style.left=xy.x+'%'; slot.style.top=xy.y+'%';
+    const pl=players.find(p=>p.id===lineup[pos.id]);
+    const cfg=rolesConfig[pos.role];
+    const rl=roleLabel(pos.role);
+    const tag=roleTag(pos.role);
+    const wrap=document.createElement('div'); wrap.className='token-wrap';
+    const ring=document.createElement('div'); ring.style.position='absolute'; ring.style.inset='0'; ring.style.borderRadius='999px'; ring.style.pointerEvents='none'; const ringCol=mix(cfg.hex,0.15); const halo=mix(cfg.hex,0.55); ring.style.boxShadow=`0 0 0 3px ${ringCol},0 0 ${Math.max(10,tok*0.5)}px ${halo}`; ring.style.filter='saturate(110%)'; wrap.appendChild(ring);
+    const t=document.createElement('button'); t.type='button'; t.className='token';
+    const from=mix(cfg.hex,0.35); const to=mix(cfg.hex,-0.25); const text=idealTextColor(to);
+    t.style.width=tok+'px'; t.style.height=tok+'px'; t.style.color=text;
+    t.style.setProperty('--tok-grad', `linear-gradient(to bottom, ${from}, ${to})`);
+    t.setAttribute('aria-label',`${pl?pl.name:rl}${pl&&pl.number&&pl.number!=='none'?`, numero ${pl.number}`:''} – ${rl}`);
+    if(pl && pl.photo){
+      const im=new Image(); im.src=pl.photo; t.appendChild(im);
+      const vg=document.createElement('div'); vg.style.position='absolute'; vg.style.inset='0'; vg.style.borderRadius='999px'; vg.style.background='radial-gradient(120% 120% at 50% 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.38) 85%)'; vg.style.mixBlendMode='multiply'; t.appendChild(vg);
+    }
+    const roleEl=document.createElement('div'); roleEl.className='role-in'; roleEl.textContent=rl; t.appendChild(roleEl);
+    const glass=document.createElement('div'); glass.style.position='absolute'; glass.style.inset='0'; glass.style.borderRadius='999px'; glass.style.pointerEvents='none'; glass.style.background='linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 35%)'; t.appendChild(glass);
+    const number=pl&&pl.number&&pl.number!=='none'?pl.number:null;
+    if(number){ const nb=document.createElement('div'); nb.className='num'; nb.textContent=number; t.appendChild(nb); }
+    const dots=statusDots(tok,{captain:pl?.notes?.includes('[C]'),yellow:pl?.notes?.includes('[Y]'),red:pl?.notes?.includes('[R]'),absent:pl?.absent}); if(dots) t.appendChild(dots);
+    t.__dragged=false;
+    const openIfNotDragged=(ev)=>{ if(t.__dragged){ ev.preventDefault(); ev.stopPropagation(); t.__dragged=false; return; } showRoleMenu(pos,pl,t); };
+    t.addEventListener('pointerup', openIfNotDragged, {passive:false});
+    if(!moveLocked) enableDrag(t,slot,pos.id);
+    wrap.appendChild(t);
+    const chip=document.createElement('div');
+    chip.className='role-badge';
+    chip.textContent = pl ? pl.name : tag;
+    wrap.appendChild(chip);
+    slot.appendChild(wrap); f.appendChild(slot);
+  });
+}
+function firstFree(role){const ids=(FORMATIONS[formationKey]||[]).filter(p=>p.role===role).map(p=>p.id); for(const id of ids){ if(!lineup[id]) return id } return ids[0] }
+function renderList(){
+  const root=byId('list'); root.innerHTML=''; const q=(byId('search').value||'').toLowerCase();
+  roleCodes.forEach(code=>{
+    const label=roleLabel(code); const tag=roleTag(code); const cfg=rolesConfig[code];
+    const g=document.createElement('div'); g.className='group';
+    const header=document.createElement('div'); header.style.display='flex'; header.style.gap='8px'; header.style.alignItems='center';
+    const badge=document.createElement('span'); badge.className='badge'; badge.textContent=tag; badge.style.background=cfg.color; badge.style.color=isDark(cfg.hex)?'#e5e7eb':'#0b1020';
+    header.appendChild(badge); const b=document.createElement('b'); b.textContent=label; header.appendChild(b); g.appendChild(header);
+    const box=document.createElement('div');
+    players.filter(p=>p.role===code && p.name.toLowerCase().includes(q)).forEach((p,i)=>{
+      const row=document.createElement('div'); row.className='row';
+      const L=document.createElement('div'); L.style.display='flex';L.style.gap='8px';L.style.alignItems='center';
+      L.innerHTML=`<div class="av">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
+                   <div><div style="font-weight:800">${p.name}</div>
+                   <div style="font-size:11px;opacity:.7">#${p.number==='none'?'—':p.number} • Ordine ${i+1}${p.absent?' • Assente':''}</div></div>`;
+      const R=document.createElement('div');
+      const b1=document.createElement('button'); b1.className='btn'; b1.textContent='Modifica'; b1.onclick=()=>openPlayer(p);
+      const b2=document.createElement('button'); b2.className='btn primary'; b2.textContent='Assegna';
+        b2.onclick=()=>{ const posId=firstFree(code); if(!posId) return; lineup[posId]=p.id; Storage.set('lineup',lineup); saveStateToServer(); renderField() };
+      R.appendChild(b1); R.appendChild(b2);
+      row.appendChild(L); row.appendChild(R); box.appendChild(row);
+    });
+    if(!box.childElementCount){ const e=document.createElement('div'); e.style.opacity=.6; e.style.fontSize='12px'; e.textContent='Nessun giocatore'; box.appendChild(e) }
+    g.appendChild(box); root.appendChild(g);
+  });
+}
+
+/* ===== MENU POSIZIONE ===== */
+function showRoleMenu(pos, player, anchor){
+  if(window.__menu){window.__menu.remove(); window.__menu=null;}
+  const m=document.createElement('div'); m.className='menu-pop';
+  const head=document.createElement('div'); head.className='menu-head';
+  head.textContent=roleLabel(pos.role); m.appendChild(head);
+  const editLabel=document.createElement('div'); editLabel.className='menu-item'; editLabel.textContent='Modifica etichetta ruolo';
+  editLabel.onclick=()=>{ m.remove(); openRoleLabelEditor(pos.role); }; m.appendChild(editLabel);
+  if(player){
+    const rem=document.createElement('div'); rem.className='menu-item'; rem.textContent='Rimuovi da posizione';
+    rem.onclick=()=>{ delete lineup[pos.id]; Storage.set('lineup',lineup); saveStateToServer(); m.remove(); renderField(); };
+    m.appendChild(rem);
+    const ed=document.createElement('div'); ed.className='menu-item'; ed.textContent='Modifica giocatore';
+    ed.onclick=()=>{ m.remove(); openPlayer(player); }; m.appendChild(ed);
+  }
+  const list=players.filter(p=>p.role===pos.role);
+  if(list.length){
+    const s=document.createElement('div'); s.className='menu-head'; s.textContent='Gerarchia'; m.appendChild(s);
+    list.forEach((p,i)=>{
+      const it=document.createElement('div'); it.className='menu-item';
+      it.innerHTML=`<div class="av" style="width:24px;height:24px;border-radius:999px;overflow:hidden">${p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
+                    <div><div>${p.name}</div><div style="font-size:11px;opacity:.7">#${p.number==='none'?'—':p.number} · Ordine ${i+1}${p.absent?' · Assente':''}</div></div>`;
+        it.onclick=()=>{ lineup[pos.id]=p.id; Storage.set('lineup',lineup); saveStateToServer(); m.remove(); renderField(); };
+      m.appendChild(it);
+    });
+  }else{
+    const emp=document.createElement('div'); emp.className='menu-item'; emp.style.opacity=.7; emp.textContent='Nessun giocatore per ruolo'; m.appendChild(emp);
+  }
+  const add=document.createElement('div'); add.className='menu-item'; add.textContent='➕ Nuovo giocatore';
+  add.onclick=()=>{ m.remove(); openPlayer(null,pos.id); }; m.appendChild(add);
+  document.body.appendChild(m); window.__menu=m;
+  const ar=anchor.getBoundingClientRect(); const vw=innerWidth, vh=innerHeight; const mw=m.offsetWidth, mh=m.offsetHeight;
+  let left=ar.left+ar.width/2-mw/2; left=Math.max(8,Math.min(vw-mw-8,left));
+  let top=ar.bottom+8; if(top+mh>vh-8) top=ar.top-mh-8; top=Math.max(8,top);
+  m.style.left=left+'px'; m.style.top=top+'px';
+  setTimeout(()=>document.addEventListener('mousedown',function hide(e){ if(m&&!m.contains(e.target)){m.remove(); window.__menu=null; document.removeEventListener('mousedown',hide,true)} },true),0);
+}
+
+function openRoleLabelEditor(code){
+  __roleEditing=code;
+  byId('roleTagInput').value=roleTag(code);
+  byId('roleLabelInput').value=roleLabel(code);
+  openModal('#roleLabelM');
+}
+
+/* ===== DRAG (Snap/Anti-collisione) ===== */
+function enableDrag(token,slot,posId){
+  token.style.cursor='grab'; let act=false,pid=null; const fld=byId('field');
+  let startX=0,startY=0, moved=false;
+  token.addEventListener('pointerdown',e=>{act=true; pid=e.pointerId; moved=false; token.__dragged=false; startX=e.clientX; startY=e.clientY; token.setPointerCapture(pid); token.style.filter='brightness(1.08)'; document.body.classList.add('no-scroll'); e.preventDefault();},{passive:false});
+  token.addEventListener('pointermove',e=>{
+    if(!act)return; e.preventDefault();
+    const dx=Math.abs(e.clientX-startX), dy=Math.abs(e.clientY-startY);
+    if(dx>6||dy>6){ moved=true; token.__dragged=true; }
+    const r=fld.getBoundingClientRect();
+    let x=((e.clientX-r.left)/r.width)*100, y=((e.clientY-r.top)/r.height)*100;
+    x=Math.max(4,Math.min(96,x)); y=Math.max(4,Math.min(96,y));
+    slot.style.left=x+'%'; slot.style.top=y+'%';
+    posOverrides[oKey(formationKey,posId)]={x:+x.toFixed(2),y:+y.toFixed(2)};
+  },{passive:false});
+  token.addEventListener('pointerup',finish,{passive:false}); token.addEventListener('pointercancel',finish,{passive:false});
+  function finish(e){
+    if(!act)return; e && e.preventDefault(); act=false; token.style.filter=''; document.body.classList.remove('no-scroll');
+    const r=fld.getBoundingClientRect();
+    let x=parseFloat(slot.style.left), y=parseFloat(slot.style.top);
+    let px=r.left+r.width*(x/100), py=r.top+r.height*(y/100);
+    const tok=parseFloat(getComputedStyle(fld).getPropertyValue('--tok'))||56;
+    if(snap){
+      const step=tok, minX=r.left+r.width*.04, maxX=r.left+r.width*.96, minY=r.top+r.height*.04, maxY=r.top+r.height*.96;
+      px=Math.max(minX,Math.min(maxX,Math.round((px-r.left)/step)*step+r.left));
+      py=Math.max(minY,Math.min(maxY,Math.round((py-r.top)/step)*step+r.top));
+    }
+    if(anticoll){
+      const others=[]; (FORMATIONS[formationKey]||[]).forEach(p=>{
+        if(p.id===posId)return; const xy=getXY(formationKey,p),ox=r.left+r.width*(xy.x/100),oy=r.top+r.height*(xy.y/100); others.push({x:ox,y:oy});
+      });
+      const minD=tok*1.05; const coll=(X,Y)=>others.some(q=>Math.hypot(X-q.x,Y-q.y)<minD);
+      if(coll(px,py)){
+        const step=tok, minX=r.left+r.width*.04, maxX=r.left+r.width*.96, minY=r.top+r.height*.04, maxY=r.top+r.height*.96;
+        let best=null;
+        for(let lay=1;lay<=6&&!best;lay++){
+          for(let dx=-lay;dx<=lay&&!best;dx++){
+            for(let dy=-lay;dy<=lay&&!best;dy++){
+              if(Math.abs(dx)!==lay&&Math.abs(dy)!==lay)continue;
+              const cx=Math.max(minX,Math.min(maxX,px+dx*step)), cy=Math.max(minY,Math.min(maxY,py+dy*step));
+              if(!coll(cx,cy)) best={x:cx,y:cy};
+            }
+          }
+        }
+        if(best){ px=best.x; py=best.y }
+      }
+    }
+    const nx=((px-r.left)/r.width)*100, ny=((py-r.top)/r.height)*100;
+    slot.style.left=nx+'%'; slot.style.top=ny+'%';
+    posOverrides[oKey(formationKey,posId)]={x:+nx.toFixed(2),y:+ny.toFixed(2)};
+      Storage.set('posOverrides',posOverrides); saveStateToServer();
+    setTimeout(()=>{ token.__dragged=false; },50);
+  }
+}
+
+/* ===== PLAYER MODAL ===== */
+function updatePlayerOptions(){
+  const roleSel=byId('pRole'); roleSel.innerHTML=roleCodes.map(code=>`<option value="${code}">${roleLabel(code)}</option>`).join('');
+  const numSel=byId('pNum'); numSel.innerHTML='<option value="none">Nessun numero</option>'+Array.from({length:99},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+}
+function openPlayer(p,posId){
+  __editing=p||null; __pendingPos=posId||null; updatePlayerOptions();
+  byId('pTitle').textContent=p?'Modifica Giocatore':'Nuovo Giocatore';
+  byId('pName').value=p?p.name:''; byId('pRole').value=p?p.role:(__pendingPos?FORMATIONS[formationKey].find(x=>x.id===__pendingPos)?.role:'ATT');
+  byId('pNum').value=p?(p.number||'none'):'none'; byId('pAbs').checked=!!(p&&p.absent);
+  byId('pNotes').value=p?(p.notes||''):'';
+  byId('pPrev').innerHTML=p&&p.photo?`<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover">`:'';
+  byId('pRemove').style.display=p?'':'none'; byId('pPhoto').value='';
+  openModal('#playerM');
+}
+async function handlePlayerSave(){
+  const name=byId('pName').value.trim(); if(!name){console.error('Nome obbligatorio');return;}
+  const role=byId('pRole').value; const num=byId('pNum').value; const abs=byId('pAbs').checked; const notes=byId('pNotes').value; const file=byId('pPhoto').files[0];
+  let photo=__editing?(__editing.photo||''):'';
+  if(file){ photo=await fileToDataUrlResized(file) }
+  if(__editing){ Object.assign(__editing,{name: name, role: role, number: num, absent: abs, notes: notes, photo: photo}); }
+    else { const p={id:crypto.randomUUID(),name,role,number:num,absent:abs,notes,photo,createdAt:Date.now()}; players.push(p); if(__pendingPos){ lineup[__pendingPos]=p.id; Storage.set('lineup',lineup); saveStateToServer(); } }
+    Storage.set('players',players); saveStateToServer(); renderList(); renderField(); closeModal('#playerM');
+}
+function handlePlayerDelete(){
+  if(!__editing) return; const id=__editing.id;
+  Object.keys(lineup).forEach(k=>{ if(lineup[k]===id) delete lineup[k] });
+  players=players.filter(p=>p.id!==id);
+    Storage.set('players',players); Storage.set('lineup',lineup); saveStateToServer();
+    renderList(); renderField(); closeModal('#playerM');
+}
+
+/* ===== SHARE / EXPORT HTML ===== */
+function buildShareState(){
+  return {
+    __version: SCHEMA_VERSION,
+    __savedAt: nowIso(),
+    formationKey,
+    players,
+    lineup,
+    teamName,
+    coachName,
+    logo,
+    posOverrides,
+    roleNames:Object.fromEntries(roleCodes.map(c=>[c,roleLabel(c)])),
+    roleTags:Object.fromEntries(roleCodes.map(c=>[c,roleTag(c)])),
+    roleConfig: rolesConfig
+  };
+}
+const viewerHtmlFromState = (st) => {
+  const form = FORMATIONS[st.formationKey] || [];
+  const roleCfg = {};
+  roleCodes.forEach((code) => {
+    const cfg = st.roleConfig?.[code] || rolesConfig[code];
+    roleCfg[code] = {
+      hex: cfg.hex,
+      label: st.roleNames?.[code] || cfg.defaultLabel,
+      tag: st.roleTags?.[code] || code,
+    };
+  });
+
+  const esc = (value = "") =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const hexToRgb = (hex = "") => {
+    let h = hex.replace("#", "");
+    if (h.length === 3) h = h.split("").map((x) => x + x).join("");
+    const n = parseInt(h || "000000", 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  };
+
+  const mix = (hex, pct) => {
+    const { r, g, b } = hexToRgb(hex);
+    const t = pct >= 0 ? 255 : 0;
+    const p = Math.abs(pct);
+    const interp = (a) => Math.round(a + (t - a) * p);
+    return `#${[interp(r), interp(g), interp(b)]
+      .map((v) => v.toString(16).padStart(2, "0"))
+      .join("")}`;
+  };
+
+  const idealTextColor = (hex) => {
+    const { r, g, b } = hexToRgb(hex);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 140 ? "#0b0b0b" : "#ffffff";
+  };
+
+  const getXY = (pos) => {
+    const key = `${st.formationKey}:${pos.id}`;
+    const ov = st.posOverrides?.[key];
+    return {
+      x: ov ? ov.x : pos.x,
+      y: ov ? ov.y : pos.y,
+    };
+  };
+
+  const tokensHtml = form
+    .map((pos) => {
+      const lineupId = st.lineup?.[pos.id];
+      const player = lineupId ? st.players.find((p) => p.id === lineupId) : null;
+      const cfg = roleCfg[pos.role] || { hex: "#999999", label: pos.role, tag: pos.role };
+      const coords = getXY(pos);
+      const name = player ? player.name : cfg.tag;
+      const roleLabel = cfg.label;
+      const number = player?.number && player.number !== "none" ? player.number : "";
+      const color = cfg.hex || "#999999";
+      const from = mix(color, 0.35);
+      const to = mix(color, -0.25);
+      const ring = mix(color, 0.15);
+      const halo = mix(color, 0.55);
+      const textColor = idealTextColor(to);
+      const nameChip = `<div class="nameChip" title="${esc(name)}">${esc(name)}</div>`;
+      const roleChip = `<div class="roleIn" title="${esc(roleLabel)}">${esc(roleLabel)}</div>`;
+      const photo = player?.photo
+        ? `<img class="tokenImg" src="${player.photo}" alt="">
+           <div class="tokenVignette"></div>`
+        : "";
+      const num = number ? `<div class="num">${esc(number)}</div>` : "";
+      return `
+      <div class="tokenWrap" style="left:${coords.x}%;top:${coords.y}%;">
+        ${nameChip}
+        <div class="token" style="background-image:radial-gradient(120% 120% at 30% 0%, rgba(255,255,255,.22), rgba(255,255,255,0) 55%),linear-gradient(#00000022,#00000022),conic-gradient(#fff0 0 25%,#ffffff22 0 50%,#fff0 0 75%,#ffffff22 0 100%),linear-gradient(to bottom,${from},${to});color:${textColor};">
+          <div class="tokenRing" style="--ring:${ring};--halo:${halo};"></div>
+          ${photo}
+          ${roleChip}
+          ${num}
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  const listHtml = roleCodes
+    .map((code) => {
+      const cfg = roleCfg[code] || { hex: "#999999", label: code, tag: code };
+      const chipColor = cfg.hex || "#999999";
+      const chipText = idealTextColor(chipColor);
+      const playersByRole = (st.players || []).filter((p) => p.role === code);
+      const roster = playersByRole
+        .map((p) => {
+          const suffix = p.number && p.number !== "none" ? ` (#${esc(p.number)})` : "";
+          return `<span class="playerChip">${esc(p.name)}${suffix}</span>`;
+        })
+        .join("") || '<i class="empty">Nessun giocatore</i>';
+      return `
+      <section class="group">
+        <header class="groupHdr">
+          <span class="sw" style="background:${chipColor};"></span>
+          <b>${esc(cfg.label)}</b>
+          <span class="code" style="background:${chipColor};color:${chipText};">${esc(cfg.tag)}</span>
+        </header>
+        <div class="groupBody">${roster}</div>
+      </section>`;
+    })
+    .join("");
+
+  const css = `
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:#0a0f1a;color:#e6edf3}
+.wrap{max-width:1200px;margin:0 auto;padding:12px;display:grid;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,360px)}
+.card{border:1px solid #263345;border-radius:14px;background:#121826;padding:10px;box-shadow:0 6px 30px rgba(0,0,0,.25)}
+.field{position:relative;width:100%;aspect-ratio:9/16;border:1px solid #263345;border-radius:18px;background:linear-gradient(180deg,#166534,#064e3b);overflow:hidden;--tok:clamp(52px,9vw,86px)}
+.gridlines{position:absolute;inset:0;width:100%;height:100%}
+.tokenWrap{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--tok);z-index:1}
+.token{position:relative;width:var(--tok);height:var(--tok);border-radius:999px;border:3px solid transparent;display:grid;place-content:center;font-weight:900;color:#e5e7eb;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -10px 18px rgba(0,0,0,.35),0 14px 32px rgba(0,0,0,.45);overflow:hidden}
+.tokenRing{position:absolute;inset:-3px;border-radius:999px;box-shadow:0 0 0 3px var(--ring),0 0 24px var(--halo);pointer-events:none}
+.tokenImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:999px}
+.tokenVignette{position:absolute;inset:0;border-radius:999px;background:radial-gradient(120% 120% at 50% 30%,rgba(0,0,0,0) 55%,rgba(0,0,0,.38) 85%);mix-blend-mode:multiply}
+.roleIn{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);max-width:88%;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(10,14,22,.78);color:#f8fafc;font-weight:800;line-height:1.05;box-shadow:0 0 0 1px rgba(0,0,0,.25) inset,0 2px 6px rgba(0,0,0,.35);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{position:absolute;right:-6px;bottom:-6px;min-width:20px;height:20px;border-radius:999px;background:#0b1220;color:#e5e7eb;font-weight:900;font-size:11px;border:2px solid #334155;display:grid;place-content:center;z-index:3}
+.nameChip{display:inline-block;margin-bottom:4px;padding:3px 8px;border-radius:999px;border:1px solid #334155;background:rgba(9,14,22,.92);color:#eef2ff;font:700 12px/1.05 system-ui;max-width:min(60vw,420px);backdrop-filter:blur(4px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side{display:flex;flex-direction:column;gap:8px}
+.group{border:1px solid #263345;border-radius:10px;padding:8px}
+.groupHdr{display:flex;align-items:center;gap:8px}
+.groupBody{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.playerChip{padding:4px 6px;border:1px solid #263345;border-radius:8px}
+.sw{width:12px;height:12px;border-radius:999px;display:inline-block}
+.code{margin-left:auto;font:800 12px/1 system-ui;padding:2px 8px;border-radius:999px}
+.empty{opacity:.7}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+@media(max-width:640px){body{font-size:15px}.wrap{gap:10px}.field{--tok:clamp(48px,12vw,78px)}}
+@media print{body{background:#fff;color:#000}.card{background:#fff;border-color:#ccc;box-shadow:none}.field{border-color:#ccc}.nameChip{background:#f1f5f9;color:#0b0b0b}.roleIn{background:#0f172a;color:#fff}}
+`;
+
+  return `<!doctype html><html lang="it"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${esc(st.teamName || "Formazione")}</title>
+<style>${css}</style>
+</head><body>
+  <div class="wrap">
+    <section class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:10px;overflow:hidden;border:1px solid #273449;background:#0f1624">${
+          st.logo ? `<img src="${st.logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover"/>` : ""
+        }</div>
+        <div>
+          <div style="font-weight:800">${esc(st.teamName || "")}</div>
+          <div style="opacity:.8;font-size:12px">Allenatore: ${esc(st.coachName || "")}</div>
+        </div>
+      </div>
+      <div class="field" role="img" aria-label="Campo con formazione">
+        <svg class="gridlines" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden="true">
+          <g stroke="#9fb3c8" stroke-width=".6" fill="none" opacity=".9">
+            <rect x="2.5" y="2.5" width="95" height="155" rx="2.5"/>
+            <line x1="2.5" y1="80" x2="97.5" y2="80"/>
+            <circle cx="50" cy="80" r="9"/>
+            <rect x="32" y="132" width="36" height="18"/>
+            <rect x="40" y="142" width="20" height="8"/>
+            <rect x="32" y="10" width="36" height="18"/>
+            <rect x="40" y="10" width="20" height="8"/>
+            <rect x="46.5" y="150" width="7" height="4"/>
+            <rect x="46.5" y="6" width="7" height="4"/>
+            <line x1="8" y1="30" x2="92" y2="30" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="55" x2="92" y2="55" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="105" x2="92" y2="105" opacity=".6" stroke-width=".4"/>
+            <line x1="8" y1="130" x2="92" y2="130" opacity=".6" stroke-width=".4"/>
+          </g>
+        </svg>
+        ${tokensHtml}
+      </div>
+    </section>
+    <aside class="card side">
+      <h3 style="margin:0">Lista giocatori</h3>
+      ${listHtml}
+    </aside>
+  </div>
+</body></html>`;
+};
+function saveBlob(name,content){const blob=new Blob([content],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function exportToHTML(){ const st=buildShareState(); const html=viewerHtmlFromState(st); saveBlob((teamName||'formazione')+'.html',html) }
+
+function isPlainObject(x){ return x && typeof x === "object" && !Array.isArray(x); }
+
+function validateState(s){
+  if (!isPlainObject(s)) return "File non valido";
+  if (typeof s.__version !== "number") return "Versione schema assente o non valida";
+  if (!Array.isArray(s.players)) return "Campo 'players' non valido";
+  if (!isPlainObject(s.lineup)) return "Campo 'lineup' non valido";
+  if (typeof s.formationKey !== "string") return "Campo 'formationKey' non valido";
+  return null;
+}
+
+function applyStateReplace(s){
+  formationKey = s.formationKey ?? "4-2-1-3";
+  players = Array.isArray(s.players) ? s.players : [];
+  lineup = isPlainObject(s.lineup) ? s.lineup : {};
+  teamName = s.teamName ?? "";
+  coachName = s.coachName ?? "";
+  logo = s.logo ?? "";
+  posOverrides = isPlainObject(s.posOverrides) ? s.posOverrides : {};
+  if (s.roleNames) Object.entries(s.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+  if (s.roleTags) Object.entries(s.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+  if (s.roleConfig) { Object.assign(rolesConfig, s.roleConfig); Storage.set('roleConfig', rolesConfig); }
+  Storage.set('formationKey', formationKey);
+  Storage.set('players', players);
+  Storage.set('lineup', lineup);
+  Storage.set('teamName', teamName);
+  Storage.set('coachName', coachName);
+  Storage.set('logo', logo);
+  Storage.set('posOverrides', posOverrides);
+  saveStateToServer();
+  renderAll();
+  notify("Dati importati (sostituzione).");
+}
+
+function applyStateMerge(s){
+  const byId = new Map(players.map(p => [p.id, p]));
+  (s.players || []).forEach(p => byId.set(p.id, p));
+  players = Array.from(byId.values()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const ids = new Set(players.map(p=>p.id));
+  const next = { ...lineup };
+  Object.entries(s.lineup || {}).forEach(([pos,pid])=>{ if (ids.has(pid)) next[pos]=pid; });
+  lineup = next;
+  if (s.teamName) teamName = s.teamName;
+  if (s.coachName) coachName = s.coachName;
+  if (s.logo) logo = s.logo;
+  if (s.posOverrides) posOverrides = { ...posOverrides, ...s.posOverrides };
+  if (s.roleNames) Object.entries(s.roleNames).forEach(([c,l])=>Storage.set('roleName_'+c,l));
+  if (s.roleTags) Object.entries(s.roleTags).forEach(([c,t])=>Storage.set('roleTag_'+c,t));
+  if (s.roleConfig) { Object.keys(s.roleConfig).forEach(code=>{ rolesConfig[code]={...rolesConfig[code], ...s.roleConfig[code]}; }); Storage.set('roleConfig', rolesConfig); }
+  if (s.formationKey) formationKey = s.formationKey;
+  Storage.set('formationKey', formationKey);
+  Storage.set('players', players);
+  Storage.set('lineup', lineup);
+  Storage.set('teamName', teamName);
+  Storage.set('coachName', coachName);
+  Storage.set('logo', logo);
+  Storage.set('posOverrides', posOverrides);
+  saveStateToServer();
+  renderAll();
+  notify("Dati importati (unione).");
+}
+
+function downloadJson(){
+  const st = buildShareState();
+  const blob = new Blob([JSON.stringify(st,null,2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safe = (teamName || 'formazione').toLowerCase().replace(/[^a-z0-9-_]+/gi,'-');
+  a.href = url;
+  a.download = `${safe}-${(st.__savedAt||'').slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+async function importJsonFromFile(mode){
+  const input = byId('jsonInput');
+  input.value = '';
+  input.onchange = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try{
+      const txt = await f.text();
+      const obj = JSON.parse(txt);
+      const err = validateState(obj);
+      if (err) return alert(err);
+      mode === 'replace' ? applyStateReplace(obj) : applyStateMerge(obj);
+    } catch(e){
+      console.error(e); alert('Impossibile leggere il file JSON.');
+    }
+  };
+  input.click();
+}
+
+async function importJsonFromClipboard(mode){
+  try{
+    const txt = await navigator.clipboard.readText();
+    const obj = JSON.parse(txt);
+    const err = validateState(obj);
+    if (err) return alert(err);
+    mode === 'replace' ? applyStateReplace(obj) : applyStateMerge(obj);
+  } catch(e){
+    console.error(e); alert('Appunti non disponibili o JSON non valido.');
+  }
+}
+
+/* ===== EVENTS ===== */
+byId('formation').onchange=e=>{formationKey=e.target.value; Storage.set('formationKey',formationKey); saveStateToServer(); renderField()};
+byId('search').oninput=renderList;
+byId('add').onclick=()=>openPlayer();
+byId('pSave').onclick=handlePlayerSave; byId('pRemove').onclick=handlePlayerDelete; byId('pDelPhoto').onclick=()=>{ byId('pPhoto').value=''; byId('pPrev').innerHTML=''; if(__editing) __editing.photo=''; };
+byId('editInfo').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
+byId('editRoles').onclick=()=>{
+  const box=byId('rolesEditBox'); box.innerHTML='';
+  roleCodes.forEach(code=>{
+    const div=document.createElement('div');
+    div.style.display='grid';
+    div.style.gridTemplateColumns='60px 1fr 1fr';
+    div.style.gap='6px';
+    div.style.alignItems='center';
+    div.innerHTML=`<span style="font-size:12px">${code}</span>
+      <input class="input role-tag" data-code="${code}" value="${roleTag(code)}" placeholder="Tag">
+      <input class="input role-label" data-code="${code}" value="${roleLabel(code)}" placeholder="Nome">`;
+    box.appendChild(div);
+  });
+  openModal('#rolesM');
+};
+byId('rolesSave').onclick=()=>{
+  byId('rolesEditBox').querySelectorAll('input.role-tag').forEach(inp=>{
+    setRoleTag(inp.dataset.code, inp.value.trim() || inp.dataset.code);
+  });
+  byId('rolesEditBox').querySelectorAll('input.role-label').forEach(inp=>{
+    setRoleLabel(inp.dataset.code, inp.value.trim() || rolesConfig[inp.dataset.code].defaultLabel);
+  });
+  renderList(); renderField();
+  closeModal('#rolesM');
+};
+byId('roleLabelSave').onclick=()=>{
+  if(!__roleEditing) return;
+  const tag=byId('roleTagInput').value.trim()||__roleEditing;
+  const val=byId('roleLabelInput').value.trim()||rolesConfig[__roleEditing].defaultLabel;
+  setRoleTag(__roleEditing,tag);
+  setRoleLabel(__roleEditing,val);
+  renderList(); renderField();
+  closeModal('#roleLabelM');
+};
+byId('teamName').onclick=()=>{byId('tNameI').value=teamName||'';byId('coachI').value=coachName||'';openModal('#infoM')};
+byId('infoM').querySelector('[data-close]').addEventListener('click',()=>{ teamName=byId('tNameI').value||teamName; coachName=byId('coachI').value||''; Storage.set('teamName',teamName); Storage.set('coachName',coachName); saveStateToServer(); renderHeader(); closeModal('#infoM') });
+byId('logoInput').addEventListener('change',async (e)=>{const f=e.target.files&&e.target.files[0]; if(!f) return; if(!f.type.startsWith('image/')) return; const d=await fileToDataUrlResized(f,256,0.85); logo=d; Storage.set('logo',logo); saveStateToServer(); renderHeader()});
+byId('share').onclick=()=>openModal('#shareM');
+byId('dlHtml').onclick=exportToHTML;
+byId('downloadHtml').onclick=exportToHTML;
+byId('exportJson').onclick=downloadJson;
+byId('importJsonReplace').onclick=()=>importJsonFromFile('replace');
+byId('importJsonMerge').onclick=()=>importJsonFromFile('merge');
+byId('importJsonClipboard').onclick=()=>importJsonFromClipboard('replace');
+
+byId('lock').onclick=()=>{ moveLocked=!moveLocked; Storage.set('moveLocked',moveLocked); renderHeader(); renderField() };
+byId('snap').onchange=e=>{ snap=!!e.target.checked; Storage.set('snap',snap) };
+byId('anticoll').onchange=e=>{ anticoll=!!e.target.checked; Storage.set('anticoll',anticoll) };
+byId('reset').onclick=()=>{ const pref=formationKey+':'; Object.keys(posOverrides).forEach(k=>{ if(k.startsWith(pref)) delete posOverrides[k] }); Storage.set('posOverrides',posOverrides); saveStateToServer(); renderField() };
+
+/* Modals generici */
+function openModal(id){const m=document.querySelector(id); if(m) m.classList.add('open')}
+function closeModal(id){const m=document.querySelector(id); if(m) m.classList.remove('open')}
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) closeModal('#'+m.id) }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal.open').forEach(m=>closeModal('#'+m.id)) });
+
+/* BOOT */
+function renderAll(){byId('formation').value=formationKey; renderHeader(); renderField(); renderList(); syncFieldTouch();}
+renderAll();
+loadStateFromServer();
+if(typeof ResizeObserver!=='undefined'){ new ResizeObserver(updateTok).observe(byId('field')) } window.addEventListener('resize',updateTok);
+</script>
+</body>
+</html>
